@@ -1,0 +1,364 @@
+# time_travellers.py
+
+from bson.objectid import ObjectId
+from flask import Blueprint, jsonify, abort, request
+from flask_restful import reqparse
+
+from api import auth, token_auth
+from api.db import db
+from libs.common_functions import transform_mongodb_response
+
+time_travellers = Blueprint('time_travellers', __name__)
+
+
+@time_travellers.route('/', methods=['GET'])
+def home():
+    return 'Welcome at Time Travellers API!'
+
+
+# PERSONS
+person_args = reqparse.RequestParser()
+person_args.add_argument("name", type=str, required=True)
+person_args.add_argument("other_name", type=str, required=False)
+person_args.add_argument("present", type=str, required=False)
+
+
+@time_travellers.route('/persons', methods=['GET'])
+@token_auth.login_required
+def persons():
+    """
+    Get all the documents in persons collection
+
+    :return: persons json
+    """
+    cursor = db.persons.find()
+    raw_data = [doc for doc in cursor]
+    data = transform_mongodb_response(raw_data)
+
+    return jsonify(data)
+
+
+@time_travellers.route('/persons/list', methods=['GET'])
+@token_auth.login_required
+def persons_list():
+    cursor = db.persons.find({}, {'_id': 1, 'name': 1, 'other_name': 1})
+    raw_data = [doc for doc in cursor]
+
+    data = {}
+    for e in raw_data:
+        if ('other_name' in e.keys() and e['other_name'] != ''):
+            data[str(e['_id'])] = f'{e["name"]} ({e["other_name"]})'
+        else:
+            data[str(e['_id'])] = e['name']
+
+    return jsonify(data)
+
+
+@time_travellers.route('/person/<person_id>', methods=['GET'])
+@token_auth.login_required
+def get_person(person_id):
+    if (ObjectId.is_valid(person_id)):
+        raw_data = db.persons.find_one({"_id": ObjectId(person_id)})
+        raw_data['_id'] = str(raw_data['_id'])
+
+        return jsonify(raw_data)
+
+    else:
+        return jsonify({"status": 405, "message": "The ID is not valid!"}), 405
+
+
+@time_travellers.route('/person/<person_id>/trips', methods=['GET'])
+@token_auth.login_required
+def get_person_trips(person_id):
+    if (ObjectId.is_valid(person_id)):
+        data = {}
+
+        person = db.persons.find_one({"_id": ObjectId(person_id)})
+        person['_id'] = str(person['_id'])
+        data['person'] = person
+
+        cursor = db.trips.aggregate([
+            {"$lookup": {
+                "from": "persons",
+                "localField": "person",
+                        "foreignField": "_id",
+                        "as": "Person"
+            }},
+            {"$unwind": "$Person"},
+            {"$lookup": {
+                "from": "dates",
+                "localField": "date",
+                        "foreignField": "_id",
+                        "as": "Date"
+            }},
+            {"$unwind": "$Date"},
+            {"$project": {
+                "_id": 0,
+                "movie": 1,
+                "movie_imdb_url": 1,
+                "order": 1,
+                "Date": "$Date.date",
+                        "DateId": "$Date._id",
+                        "PersonId": "$Person._id",
+                        "TripId": "$_id",
+            }},
+            {"$match": {"PersonId": ObjectId(person_id)}},
+            {"$sort": {"order": 1}}
+        ])
+        trips = [doc for doc in cursor]
+        data['trips'] = transform_mongodb_response(trips, ['TripId', 'DateId', 'PersonId'])
+
+        return jsonify(data)
+
+    else:
+        return jsonify({"status": 405, "message": "The ID is not valid!"}), 405
+
+
+@time_travellers.route('/person/add', methods=['POST'])
+@token_auth.login_required
+def person_add():
+    data = person_args.parse_args()
+    if not data:
+        abort(400)
+
+    try:
+        db.persons.insert_one(data)
+        return jsonify("INSERTED"), 200
+    except BaseException as ex:
+        abort(400)
+
+
+@time_travellers.route('/person/edit/<person_id>', methods=['PUT'])
+@token_auth.login_required
+def person_edit(person_id):
+    data = person_args.parse_args()
+    if not data:
+        abort(400)
+
+    db.persons.update_one({'_id': ObjectId(person_id)}, {"$set": data})
+    return jsonify("UPDATED"), 200
+
+
+@time_travellers.route('/person/delete/<person_id>', methods=['DELETE'])
+@token_auth.login_required
+def person_delete(person_id):
+    try:
+        db.persons.delete_one({'_id': ObjectId(person_id)})
+        return jsonify("DELETED"), 200
+    except BaseException as ex:
+        abort(400)
+
+
+# DATES
+dates_args = reqparse.RequestParser()
+dates_args.add_argument("date", type=str, required=True)
+
+
+@time_travellers.route('/dates', methods=['GET'])
+@token_auth.login_required
+def dates():
+    cursor = db.dates.find()
+    raw_data = [doc for doc in cursor]
+    data = transform_mongodb_response(raw_data)
+
+    return jsonify(data)
+
+
+@time_travellers.route('/dates/list', methods=['GET'])
+@token_auth.login_required
+def dates_list():
+    cursor = db.dates.find({}, {'_id': 1, 'date': 1}).sort([('date', 1)])
+    raw_data = [doc for doc in cursor]
+
+    data = {}
+    for e in raw_data:
+        data[str(e['_id'])] = e['date']
+
+    return jsonify(data)
+
+
+@time_travellers.route('/date/<date_id>', methods=['GET'])
+@token_auth.login_required
+def get_date(date_id):
+    if ObjectId.is_valid(date_id):
+        date = db.dates.find_one({"_id": ObjectId(date_id)})
+        date['_id'] = str(date['_id'])
+
+        return jsonify(date)
+
+    else:
+        return jsonify({"status": 405, "message": "The ID is not valid!"}), 405
+
+
+@time_travellers.route('/date/add', methods=['POST'])
+@token_auth.login_required
+def date_add():
+    data = dates_args.parse_args()
+    if not data:
+        abort(400)
+
+    try:
+        db.dates.insert_one(data)
+        return jsonify("INSERTED"), 200
+    except BaseException as ex:
+        abort(400)
+
+
+@time_travellers.route('/date/edit/<date_id>', methods=['PUT'])
+@token_auth.login_required
+def date_edit(date_id):
+    data = dates_args.parse_args()
+    if not data:
+        abort(400)
+
+    db.dates.update_one({'_id': ObjectId(date_id)}, {"$set": data})
+    return jsonify("UPDATED"), 200
+
+
+@time_travellers.route('/date/delete/<date_id>', methods=['DELETE'])
+@token_auth.login_required
+def date_delete(date_id):
+    try:
+        db.dates.delete_one({'_id': ObjectId(date_id)})
+        return jsonify("DELETED"), 200
+    except BaseException as ex:
+        abort(400)
+
+
+# TRIPS
+trips_args = reqparse.RequestParser()
+trips_args.add_argument("person", type=ObjectId, required=True)
+trips_args.add_argument("date", type=ObjectId, required=True)
+trips_args.add_argument("movie", type=str, required=True)
+trips_args.add_argument("movie_year", type=str)
+trips_args.add_argument("order", type=int, required=True)
+
+
+@time_travellers.route('/trips', methods=['GET'])
+@token_auth.login_required
+def trips():
+    
+    params = request.args.to_dict()
+    where = {}
+    if 'order' in params.keys() and params['order'] == 'gt0':
+        where = {"order": {"$gt": 0}}
+    '''
+    if 'name' in params.keys() and params['name'] != '':
+        where = {"PersonName": params['name']}
+    '''
+    
+    
+    cursor = db.trips.aggregate([
+        {"$lookup": {
+            "from": "persons",
+            "localField": "person",
+            "foreignField": "_id",
+            "as": "Person"
+        }},
+        {"$unwind": "$Person"},
+        {"$lookup": {
+            "from": "dates",
+            "localField": "date",
+            "foreignField": "_id",
+            "as": "Date"
+        }},
+        {"$unwind": "$Date"},
+        {"$project": {
+            "_id": 1,
+            "movie": 1,
+            "movie_imdb_url": 1,
+            "order": 1,
+            "PersonName": "$Person.name",
+            "PersonOtherName": "$Person.other_name",
+            "PersonId": "$Person._id",
+            "Date": "$Date.date",
+            "DateId": "$Date._id"
+        }},
+        {"$match": where},
+        {"$sort": {"order": 1}}
+        
+    ])
+
+    raw_data = [doc for doc in cursor]
+
+    data = transform_mongodb_response(raw_data, ["_id", "DateId", "PersonId"])
+
+    return jsonify(data)
+
+
+@time_travellers.route('/trip/<trip_id>', methods=['GET'])
+@token_auth.login_required
+def get_trip(trip_id):
+    if (ObjectId.is_valid(trip_id)):
+        trip = db.trips.find_one({"_id": ObjectId(trip_id)})
+        trip['_id'] = str(trip['_id'])
+
+        return jsonify(trip)
+
+    else:
+        return jsonify({"status": 405, "message": "The ID is not valid!"}), 405
+
+
+@time_travellers.route('/trip/add', methods=['POST'])
+@token_auth.login_required
+def trip_add():
+    data = trips_args.parse_args()
+    if not data:
+        abort(400)
+
+    try:
+        db.trips.insert_one(data)
+        return jsonify("INSERTED"), 200
+    except BaseException as ex:
+        abort(400)
+
+
+@time_travellers.route('/trip/edit/<trip_id>', methods=['PUT'])
+@token_auth.login_required
+def trip_edit(trip_id):
+    data = trips_args.parse_args()
+    if not data:
+        abort(400)
+
+    db.trips.update_one({'_id': ObjectId(trip_id)}, {"$set": data})
+    return jsonify("UPDATED"), 200
+
+
+@time_travellers.route('/trip/delete/<trip_id>', methods=['DELETE'])
+@token_auth.login_required
+def trip_delete(trip_id):
+    try:
+        db.trips.delete_one({'_id': ObjectId(trip_id)})
+        return jsonify("DELETED"), 200
+    except BaseException as ex:
+        abort(400)
+
+
+@time_travellers.route('/movies', methods=['GET'])
+@token_auth.login_required
+def movies():
+    """
+    Get unique list of movies object
+    :return:
+    """
+    cursor = db.trips.find({}, {"_id": 0, "movie": 1, "movie_year": 1, "movie_imdb_url": 1}).sort([('movie', 1)])
+    raw_data = [doc for doc in cursor]
+    raw_data = transform_mongodb_response(raw_data)
+    movies = list({value['movie']: value for value in raw_data}.values())
+
+    return jsonify(movies)
+
+
+@time_travellers.route('/movies/list', methods=['GET'])
+@token_auth.login_required
+def movies_list():
+    """
+    Get unique list of movies
+    :return:
+    """
+
+    cursor = db.trips.find({}, {"_id": 0, "movie": 1, "movie_year": 1}).sort([('movie', 1)])
+    movies = list({value['movie']: value for value in cursor}.values())
+    list_movies = ["%s (%s)" % (doc['movie'], doc['movie_year']) for doc in movies]
+
+    return jsonify(list_movies)
