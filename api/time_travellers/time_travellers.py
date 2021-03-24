@@ -41,6 +41,10 @@ def persons():
 @time_travellers.route('/persons/list', methods=['GET'])
 @token_auth.login_required
 def persons_list():
+    """
+    List of persons
+    :return: ID:PersonName list
+    """
     cursor = db.persons.find({}, {'_id': 1, 'name': 1, 'other_name': 1})
     raw_data = [doc for doc in cursor]
 
@@ -57,6 +61,12 @@ def persons_list():
 @time_travellers.route('/person/<person_id>', methods=['GET'])
 @token_auth.login_required
 def get_person(person_id):
+    """
+    Return person object by ID
+    
+    :param person_id: Person ObjectId
+    :return:
+    """
     if (ObjectId.is_valid(person_id)):
         raw_data = db.persons.find_one({"_id": ObjectId(person_id)})
         raw_data['_id'] = str(raw_data['_id'])
@@ -70,6 +80,12 @@ def get_person(person_id):
 @time_travellers.route('/person/<person_id>/trips', methods=['GET'])
 @token_auth.login_required
 def get_person_trips(person_id):
+    """
+    Get person's trips
+    
+    :param person_id: Person ObjectId
+    :return:
+    """
     if (ObjectId.is_valid(person_id)):
         data = {}
 
@@ -117,6 +133,10 @@ def get_person_trips(person_id):
 @time_travellers.route('/person/add', methods=['POST'])
 @token_auth.login_required
 def person_add():
+    """
+    
+    :return:
+    """
     data = person_args.parse_args()
     if not data:
         abort(400)
@@ -131,6 +151,11 @@ def person_add():
 @time_travellers.route('/person/edit/<person_id>', methods=['PUT'])
 @token_auth.login_required
 def person_edit(person_id):
+    """
+    
+    :param person_id:
+    :return:
+    """
     data = person_args.parse_args()
     if not data:
         abort(400)
@@ -142,6 +167,11 @@ def person_edit(person_id):
 @time_travellers.route('/person/delete/<person_id>', methods=['DELETE'])
 @token_auth.login_required
 def person_delete(person_id):
+    """
+    
+    :param person_id:
+    :return:
+    """
     try:
         db.persons.delete_one({'_id': ObjectId(person_id)})
         return jsonify("DELETED"), 200
@@ -157,6 +187,10 @@ dates_args.add_argument("date", type=str, required=True)
 @time_travellers.route('/dates', methods=['GET'])
 @token_auth.login_required
 def dates():
+    """
+    
+    :return:
+    """
     cursor = db.dates.find()
     raw_data = [doc for doc in cursor]
     data = transform_mongodb_response(raw_data)
@@ -167,6 +201,10 @@ def dates():
 @time_travellers.route('/dates/list', methods=['GET'])
 @token_auth.login_required
 def dates_list():
+    """
+    
+    :return:
+    """
     cursor = db.dates.find({}, {'_id': 1, 'date': 1}).sort([('date', 1)])
     raw_data = [doc for doc in cursor]
 
@@ -180,6 +218,11 @@ def dates_list():
 @time_travellers.route('/date/<date_id>', methods=['GET'])
 @token_auth.login_required
 def get_date(date_id):
+    """
+    
+    :param date_id:
+    :return:
+    """
     if ObjectId.is_valid(date_id):
         date = db.dates.find_one({"_id": ObjectId(date_id)})
         date['_id'] = str(date['_id'])
@@ -193,6 +236,10 @@ def get_date(date_id):
 @time_travellers.route('/date/add', methods=['POST'])
 @token_auth.login_required
 def date_add():
+    """
+    
+    :return:
+    """
     data = dates_args.parse_args()
     if not data:
         abort(400)
@@ -207,6 +254,11 @@ def date_add():
 @time_travellers.route('/date/edit/<date_id>', methods=['PUT'])
 @token_auth.login_required
 def date_edit(date_id):
+    """
+    
+    :param date_id:
+    :return:
+    """
     data = dates_args.parse_args()
     if not data:
         abort(400)
@@ -218,6 +270,11 @@ def date_edit(date_id):
 @time_travellers.route('/date/delete/<date_id>', methods=['DELETE'])
 @token_auth.login_required
 def date_delete(date_id):
+    """
+    
+    :param date_id:
+    :return:
+    """
     try:
         db.dates.delete_one({'_id': ObjectId(date_id)})
         return jsonify("DELETED"), 200
@@ -237,17 +294,15 @@ trips_args.add_argument("order", type=int, required=True)
 @time_travellers.route('/trips', methods=['GET'])
 @token_auth.login_required
 def trips():
+    """
     
+    :return:
+    """
     params = request.args.to_dict()
     where = {}
     if 'order' in params.keys() and params['order'] == 'gt0':
         where = {"order": {"$gt": 0}}
-    '''
-    if 'name' in params.keys() and params['name'] != '':
-        where = {"PersonName": params['name']}
-    '''
-    
-    
+
     cursor = db.trips.aggregate([
         {"$lookup": {
             "from": "persons",
@@ -289,6 +344,11 @@ def trips():
 @time_travellers.route('/trip/<trip_id>', methods=['GET'])
 @token_auth.login_required
 def get_trip(trip_id):
+    """
+    
+    :param trip_id:
+    :return:
+    """
     if (ObjectId.is_valid(trip_id)):
         trip = db.trips.find_one({"_id": ObjectId(trip_id)})
         trip['_id'] = str(trip['_id'])
@@ -302,6 +362,10 @@ def get_trip(trip_id):
 @time_travellers.route('/trip/add', methods=['POST'])
 @token_auth.login_required
 def trip_add():
+    """
+    
+    :return:
+    """
     data = trips_args.parse_args()
     if not data:
         abort(400)
@@ -316,6 +380,11 @@ def trip_add():
 @time_travellers.route('/trip/edit/<trip_id>', methods=['PUT'])
 @token_auth.login_required
 def trip_edit(trip_id):
+    """
+    
+    :param trip_id:
+    :return:
+    """
     data = trips_args.parse_args()
     if not data:
         abort(400)
@@ -327,6 +396,11 @@ def trip_edit(trip_id):
 @time_travellers.route('/trip/delete/<trip_id>', methods=['DELETE'])
 @token_auth.login_required
 def trip_delete(trip_id):
+    """
+    
+    :param trip_id:
+    :return:
+    """
     try:
         db.trips.delete_one({'_id': ObjectId(trip_id)})
         return jsonify("DELETED"), 200
