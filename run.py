@@ -4,6 +4,7 @@ from flask_cors import CORS
 import config
 from api.time_travellers.time_travellers import time_travellers
 from api.climate_change.climate_change import climate_change
+from api.movie_connections.movie_connections import movie_connections
 
 
 def create_app():
@@ -29,4 +30,5 @@ if __name__ == "__main__":
 	app = create_app()
 	register_blueprint(app, time_travellers, 'time_travellers')
 	register_blueprint(app, climate_change, 'climate_change')
+	register_blueprint(app, movie_connections, 'movie_connections')
 	run(app, config.HOST, config.PORT)

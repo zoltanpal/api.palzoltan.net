@@ -14,6 +14,9 @@ HOST = '127.0.0.1'
 PORT = 8000
 API_VERSION = 1
 
+
+IMDB_BASE_URL = "https://api.themoviedb.org/3/"
+
 try:
 	SECRET_KEY = os.environ['SECRET_KEY']
 except KeyError as ex:
