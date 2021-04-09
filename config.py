@@ -12,7 +12,7 @@ MONGODB_URI = os.environ["MONGODB_HOST"]
 DEBUG = True
 HOST = '127.0.0.1'
 PORT = 8000
-API_VERSION = 1.0
+API_VERSION = 1
 
 try:
 	SECRET_KEY = os.environ['SECRET_KEY']

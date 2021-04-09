@@ -1,4 +1,5 @@
 import os
+
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth
 
 import config

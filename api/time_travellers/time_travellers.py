@@ -5,10 +5,12 @@ from flask import Blueprint, jsonify, abort, request
 from flask_restful import reqparse
 
 from api import auth, token_auth
-from api.db import db
+from api.db import mongodb_client
 from libs.common_functions import transform_mongodb_response
 
 time_travellers = Blueprint('time_travellers', __name__)
+
+db = mongodb_client.time_travellers
 
 
 @time_travellers.route('/', methods=['GET'])
