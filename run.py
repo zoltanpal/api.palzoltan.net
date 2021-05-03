@@ -6,7 +6,6 @@ from api.climate_change.climate_change import climate_change
 from api.movie_connections.movie_connections import movie_connections
 from api.time_travellers.time_travellers import time_travellers
 
-
 def create_app():
 	app = Flask(__name__)
 	app.config.from_object('config')
@@ -31,4 +30,5 @@ if __name__ == "__main__":
 	register_blueprint(app, time_travellers, 'time_travellers')
 	register_blueprint(app, climate_change, 'climate_change')
 	register_blueprint(app, movie_connections, 'movie_connections')
+	
 	run(app, config.HOST, config.PORT)

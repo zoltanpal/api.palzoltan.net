@@ -10,13 +10,13 @@ from api import token_auth
 from api.db import mongodb_client
 from libs.common_functions import validate_date, last_day_of_month
 
+
 DB = mongodb_client.climate_change
 DISTRIBUTIONS = ['daily', 'monthly', 'annual']
 
 climate_change = Blueprint('climate_change', __name__)
 
 request_args = reqparse.RequestParser()
-
 
 @climate_change.route('/', methods=['GET'])
 def home():
