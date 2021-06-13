@@ -141,7 +141,7 @@ def person_add():
     """
     data = person_args.parse_args()
     if not data:
-        abort(400)
+        return jsonify("Missing data"), 400
 
     try:
         db.persons.insert_one(data)

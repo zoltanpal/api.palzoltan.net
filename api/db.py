@@ -3,6 +3,6 @@ MongoDB Client connection
 """
 from pymongo import MongoClient
 
-import config
+from config import config
 
-mongodb_client = MongoClient(config.MONGODB_URI)
+mongodb_client = MongoClient(config['HOSTS']['MONGODB_HOST'])

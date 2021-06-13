@@ -1,32 +1,27 @@
 # config.py
 import os
-from dotenv import load_dotenv
+import configparser
 
-load_dotenv()
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 LIBS_DIR = os.path.join(BASE_DIR, 'libs')
 
-MONGODB_URI = os.environ["MONGODB_HOST"]
-
-DEBUG = True
-HOST = '127.0.0.1'
-PORT = 8000
-API_VERSION = 1
-
+MONGODB_URI = config['HOSTS']['MONGODB_HOST']
 
 IMDB_BASE_URL = "https://api.themoviedb.org/3/"
 
 try:
-	SECRET_KEY = os.environ['SECRET_KEY']
+	SECRET_KEY = config['KEYS']['SECRET_KEY']
 except KeyError as ex:
 	SECRET_KEY = None
 
 try:
-	IMDB_API_KEY = os.environ['IMDB_API_KEY']
+	IMDB_API_KEY = config['KEYS']['IMDB_API_KEY']
 except KeyError as ex:
 	IMDB_API_KEY = None
 
 USERS = {
-	'admin': os.environ['ADMIN']
+	'admin': config['KEYS']['ADMIN']
 }
