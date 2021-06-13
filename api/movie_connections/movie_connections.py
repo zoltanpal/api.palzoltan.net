@@ -102,9 +102,9 @@ def person_common_movies():
     resp = get_data_from_url(url)
     raw_data = json.loads(resp)
     return jsonify(raw_data)
-
-
 '''
+
+
 @movie_connections.route('/person/common_movies', methods=['GET'])
 @token_auth.login_required
 @check_parameters(['persons'])

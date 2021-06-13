@@ -8,6 +8,7 @@ from api import auth, token_auth
 from api.db import mongodb_client
 from libs.common_functions import transform_mongodb_response
 
+
 time_travellers = Blueprint('time_travellers', __name__)
 
 db = mongodb_client.time_travellers
@@ -21,8 +22,8 @@ def home():
 # PERSONS
 person_args = reqparse.RequestParser()
 person_args.add_argument("name", type=str, required=True)
-person_args.add_argument("other_name", type=str, required=False)
-person_args.add_argument("present", type=str, required=False)
+person_args.add_argument("short_name", type=str, required=False)
+person_args.add_argument("actor_name", type=str, required=False)
 
 
 @time_travellers.route('/persons', methods=['GET'])
