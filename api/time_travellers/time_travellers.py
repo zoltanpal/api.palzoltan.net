@@ -7,6 +7,8 @@ from flask_restful import reqparse
 from api import auth, token_auth
 from api.db import mongodb_client
 from libs.common_functions import transform_mongodb_response
+import json
+from . import person_schema
 
 
 time_travellers = Blueprint('time_travellers', __name__)
@@ -17,13 +19,6 @@ db = mongodb_client.time_travellers
 @time_travellers.route('/', methods=['GET'])
 def home():
     return 'Welcome at Time Travellers API!'
-
-
-# PERSONS
-person_args = reqparse.RequestParser()
-person_args.add_argument("name", type=str, required=True)
-person_args.add_argument("short_name", type=str, required=False)
-person_args.add_argument("actor_name", type=str, required=False)
 
 
 @time_travellers.route('/persons', methods=['GET'])
@@ -93,56 +88,72 @@ def get_person_trips(person_id):
         data = {}
 
         person = db.persons.find_one({"_id": ObjectId(person_id)})
-        person['_id'] = str(person['_id'])
-        data['person'] = person
 
-        cursor = db.trips.aggregate([
-            {"$lookup": {
-                "from": "persons",
-                "localField": "person",
-                        "foreignField": "_id",
-                        "as": "Person"
-            }},
-            {"$unwind": "$Person"},
-            {"$lookup": {
-                "from": "dates",
-                "localField": "date",
-                        "foreignField": "_id",
-                        "as": "Date"
-            }},
-            {"$unwind": "$Date"},
-            {"$project": {
-                "_id": 0,
-                "movie": 1,
-                "movie_imdb_url": 1,
-                "order": 1,
-                "Date": "$Date.date",
-                        "DateId": "$Date._id",
-                        "PersonId": "$Person._id",
-                        "TripId": "$_id",
-            }},
-            {"$match": {"PersonId": ObjectId(person_id)}},
-            {"$sort": {"order": 1}}
-        ])
-        trips = [doc for doc in cursor]
-        data['trips'] = transform_mongodb_response(trips, ['TripId', 'DateId', 'PersonId'])
+        if person:
+            person['_id'] = str(person['_id'])
+            data['person'] = person
 
-        return jsonify(data)
+            cursor = db.trips.aggregate([
+                {"$lookup": {
+                    "from": "persons",
+                    "localField": "person",
+                            "foreignField": "_id",
+                            "as": "Person"
+                }},
+                {"$unwind": "$Person"},
+                {"$lookup": {
+                    "from": "dates",
+                    "localField": "date",
+                            "foreignField": "_id",
+                            "as": "Date"
+                }},
+                {"$unwind": "$Date"},
+                {"$project": {
+                    "_id": 0,
+                    "movie": 1,
+                    "movie_imdb_url": 1,
+                    "order": 1,
+                    "Date": "$Date.date",
+                            "DateId": "$Date._id",
+                            "PersonId": "$Person._id",
+                            "TripId": "$_id",
+                }},
+                {"$match": {"PersonId": ObjectId(person_id)}},
+                {"$sort": {"order": 1}}
+            ])
+            trips = [doc for doc in cursor]
+            data['trips'] = transform_mongodb_response(trips, ['TripId', 'DateId', 'PersonId'])
+
+            return jsonify(data)
+        else:
+            return jsonify({"status": 405, "message": "No Person with this ID: '{}'!".format(str(person_id))}), 405
 
     else:
         return jsonify({"status": 405, "message": "The ID is not valid!"}), 405
 
 
-@time_travellers.route('/person/add', methods=['POST'])
+@time_travellers.route('/person', methods=['POST'])
 @token_auth.login_required
 def person_add():
     """
     
     :return:
     """
-    data = person_args.parse_args()
+
+    data = json.loads(request.data)
+    errors = person_schema.validate(data)
+    if errors:
+        return jsonify({
+            'status_code': 400,
+            'message': 'Missing request arguments',
+            'error_msg': errors
+        })
+
+    
     if not data:
         return jsonify("Missing data"), 400
+
+    #data['created'] = ''
 
     try:
         db.persons.insert_one(data)
@@ -151,7 +162,8 @@ def person_add():
         abort(400)
 
 
-@time_travellers.route('/person/edit/<person_id>', methods=['PUT'])
+
+@time_travellers.route('/person/<person_id>', methods=['PUT'])
 @token_auth.login_required
 def person_edit(person_id):
     """
@@ -159,15 +171,22 @@ def person_edit(person_id):
     :param person_id:
     :return:
     """
-    data = person_args.parse_args()
-    if not data:
-        abort(400)
+
+    data = json.loads(request.data)
+    errors = person_schema.validate(data)
+    if errors:
+        return jsonify({
+            'status_code': 400,
+            'message': 'Missing request arguments',
+            'error_msg': errors
+        })
+
 
     db.persons.update_one({'_id': ObjectId(person_id)}, {"$set": data})
     return jsonify("UPDATED"), 200
 
 
-@time_travellers.route('/person/delete/<person_id>', methods=['DELETE'])
+@time_travellers.route('/person/<person_id>', methods=['DELETE'])
 @token_auth.login_required
 def person_delete(person_id):
     """
@@ -270,7 +289,7 @@ def date_edit(date_id):
     return jsonify("UPDATED"), 200
 
 
-@time_travellers.route('/date/delete/<date_id>', methods=['DELETE'])
+@time_travellers.route('/date/<date_id>', methods=['DELETE'])
 @token_auth.login_required
 def date_delete(date_id):
     """
