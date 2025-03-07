@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "api.palzoltan.net"
+version = "2.1.0"
+description = ""
+authors = ["Zoltan Pal <palzoltanet@gmail.com>"]
+readme = "README.md"
+# packages = [{include = "api"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.115.7"
+sqlalchemy = "^2.0.37"
+uvicorn = "^0.34.0"
+python-dotenv = "^1.0.1"
+requests = "^2.32.3"
+psycopg2-binary = "^2.9.10"
+python-multipart = "^0.0.20"
+pydantic = "^2.10.6"
+python-jose = "^3.4.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+warn_unused_configs = "True"
+disallow_untyped_defs = "False"
+ignore_missing_imports = "False"
+
+[tool.isort]
+known_third_party = ["dotenv", "pytest", "sqlalchemy"]

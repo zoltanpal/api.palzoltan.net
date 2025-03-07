@@ -1,0 +1,4 @@
+
+
+class PowerOfWords:
+    pass
