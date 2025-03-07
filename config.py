@@ -40,7 +40,7 @@ WEBUI_USER = os.getenv("WEBUI_USER").split(":")
 AUTH_TOKEN = os.getenv("AUTH_TOKEN")
 
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY")
-
+    
 CREDENTIALS = {
     WEBUI_USER[0]: WEBUI_USER[1]
 }
