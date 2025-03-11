@@ -32,24 +32,22 @@ AUTH_ALLOWED_DOMAINS = os.getenv("AUTH_ALLOWED_DOMAINS", default="").split(",")
 AUTH_ALLOWED_USERS = os.getenv("AUTH_ALLOWED_USERS", default="").split(",")
 
 # IMDB-API
-IMDB_API_URL = os.getenv("IMDB_BASE_URL")
-IMDB_API_KEY = os.getenv("IMDB_API_KEY")
+IMDB_API_URL = os.getenv("IMDB_BASE_URL", default="")
+IMDB_API_KEY = os.getenv("IMDB_API_KEY", default="")
 
 USGS_API_HOST = os.getenv("USGS_API_HOST")
-WEBUI_USER = os.getenv("WEBUI_USER").split(":")
+WEBUI_USER = os.getenv("WEBUI_USER", "").split(":")
 AUTH_TOKEN = os.getenv("AUTH_TOKEN")
 
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY")
 
-CREDENTIALS = {WEBUI_USER[0]: WEBUI_USER[1]}
-
 psql_config = DBConfig(
     dialect="postgresql+psycopg2",
-    username=os.environ["PSQL_USER"],
-    password=os.environ["PSQL_PASSWORD"],
-    dbname="postgres",
-    host=os.environ["PSQL_HOST"],
-    port=int(os.getenv("PSQL_PORT", default=5432)),
+    host=os.getenv("DB_HOST", default="localhost"),
+    port=int(os.getenv("DB_PORT", default=5432)),
+    username=os.getenv("DB_USER", default="postgres"),
+    password=os.getenv("DB_PASSWORD", default="mysecretpw"),
+    dbname=os.getenv("DB_NAME", default="postgres"),
 )
 
 time_travelers_db_config = copy.copy(psql_config)
