@@ -35,36 +35,40 @@ def parse_person_ids(person_ids: str) -> List[int]:
 
 
 def get_person_details(person_id: int):
-    url = '{url}/person/{person_id}?api_key={key}'.format(url=config.IMDB_API_URL,
-                                                          person_id=person_id,
-                                                          key=config.IMDB_API_KEY)
+    """
+    Fetches details about a person from the IMDB API.
 
+    Parameters:
+    - person_id (int): The unique identifier of the person.
+
+    Returns:
+    - List[Dict[str, Any]]: A list of person details if found, otherwise a JSONResponse with an error message.
+    """
+    url = f"{config.IMDB_API_URL}/person/{person_id}?api_key={config.IMDB_API_KEY}"
     status_code, result = get_data_from_url(url)
+
     if status_code == 200:
         persons = []
-        if len(result['results']) > 0:
-            for result in result['results']:
-                if result['gender'] > 0:
-                    known_for = [(x['title'], x['original_title']) for x in result['known_for']]
-                    person = {
-                        "id": result['id'],
-                        "name": result['name'],
-                        "known_for_department": result['known_for_department'],
-                        "popularity": result['popularity'],
-                        "profile_path": result['profile_path'],
-                        "known_for": known_for
-                    }
-                    persons.append(person)
+        for person_data in result.get('results', []):
+            if person_data.get('gender', 0) > 0:
+                known_for = [(x['title'], x['original_title']) for x in person_data.get('known_for', [])]
+                person = {
+                    "id": person_data['id'],
+                    "name": person_data['name'],
+                    "known_for_department": person_data['known_for_department'],
+                    "popularity": person_data['popularity'],
+                    "profile_path": person_data['profile_path'],
+                    "known_for": known_for
+                }
+                persons.append(person)
         return persons
-    else:
-        responses[status_code]["error_message"] = result
-        return JSONResponse(status_code=status_code, content=responses[status_code])
+
+    return JSONResponse(status_code=status_code, content={"error_message": result})
 
 
 def get_person_movies(person_id: int):
-    url = '{url}/person/{person_id}/movie_credits?api_key={key}'.format(url=config.IMDB_API_URL,
-                                                                        person_id=person_id,
-                                                                        key=config.IMDB_API_KEY)
+    url = f"{config.IMDB_API_URL}/person/{person_id}/movie_credits?api_key={config.IMDB_API_KEY}"
+
     movies = []
     movies_list = []
 

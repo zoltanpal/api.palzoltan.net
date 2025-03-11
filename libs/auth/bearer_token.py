@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from jose import JWTError, jwt
+import jwt
 from http import HTTPStatus
 from config import AUTH_SECRET_KEY
 
@@ -28,21 +28,21 @@ class BearerAuth(HTTPBearer):
         token = credentials.credentials
         try:
             # Decode the JWT token
-            payload = jwt.decode(token, AUTH_SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(token, key=AUTH_SECRET_KEY, algorithms=[ALGORITHM])
+
             email = payload.get("email")
+            if not email:
+                return JSONResponse(status_code=401, content="Invalid token: missing email.")
+
             issuer = payload.get("iss")
+            if not issuer:
+                return JSONResponse(status_code=401, content="Invalid token: missing issuer.")
 
-            if email is None or issuer is None:
-                return JSONResponse(
-                    {"detail": "Invalid token. Missing email or issuer."},
-                    status_code=HTTPStatus.UNAUTHORIZED,
-                )
 
-        except JWTError:
-            return JSONResponse(
-                {"detail": "Invalid token or expired token"},
-                status_code=HTTPStatus.UNAUTHORIZED,
-            )
+        except jwt.ExpiredSignatureError:
+            return JSONResponse(status_code=401, content="Token has expired.")
+        except jwt.InvalidTokenError as err:
+            return JSONResponse(status_code=401, content=f"Invalid token: {str(err)}")
 
         # Return the token if it's valid
         return token
