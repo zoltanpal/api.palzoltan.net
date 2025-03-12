@@ -7,7 +7,7 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
 import config
-from apis import time_travellers, movie_connections, earthquakes
+from apis import earthquakes, movie_connections, sentiment_analyzer, time_travellers
 from libs.middlewares.query_flattening_middleware import QueryStringFlatteningMiddleware
 from libs.middlewares.request_context_middleware import RequestContextMiddleware
 from libs.responses import responses
@@ -36,6 +36,7 @@ app.add_middleware(RequestContextMiddleware)
 app.include_router(earthquakes.router)
 app.include_router(time_travellers.router)
 app.include_router(movie_connections.router)
+app.include_router(sentiment_analyzer.router)
 
 
 @app.exception_handler(HTTPException)
