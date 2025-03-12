@@ -16,13 +16,13 @@ router = APIRouter(
 )
 
 
-class ToBeAnalyze(BaseModel):
+class InputData(BaseModel):
     lang: str
     text: str
 
 
 @router.post("/analyze_text", status_code=HTTPStatus.OK)
-async def analyze_text(item: ToBeAnalyze):
+async def analyze_text(item: InputData):
     analyzer = SentimentAnalyzerFactory.get_analyzer(item.lang)
     result = analyzer.analyze_text(item.text)
 
