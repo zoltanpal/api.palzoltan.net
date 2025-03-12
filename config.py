@@ -6,8 +6,7 @@ import copy
 import os
 
 from dotenv import load_dotenv
-
-from libs.db.db_config import DBConfig
+from palzlib.database.db_config import DBConfig
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 LIBS_DIR = os.path.join(ROOT_DIR, "libs")

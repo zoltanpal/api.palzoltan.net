@@ -2,6 +2,8 @@ from http import HTTPStatus
 
 # https://bl.ocks.org/vasturiano/ded69192b8269a78d2d97e24211e64e0
 from fastapi import APIRouter, Depends
+from palzlib.database.db_client import DBClient
+from palzlib.database.db_mapper import DBMapper
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import aliased
@@ -10,18 +12,16 @@ from starlette.responses import JSONResponse
 from config import time_travelers_db_config
 from libs.api_factory import APIFactory
 from libs.auth.bearer_token import BearerAuth
-from libs.db.db_client import SQLDBClient
-from libs.db.db_mapping import SQLDBMapping
 from libs.responses import responses
 
-db_client = SQLDBClient(db_config=time_travelers_db_config)
-db_mapping = SQLDBMapping(db_client=db_client)
-Persons = db_mapping.db_classes.persons
-Trips = db_mapping.db_classes.trips
-TripPersons = db_mapping.db_classes.trip_persons
-Dates = db_mapping.db_classes.dates
-Movies = db_mapping.db_classes.movies
-Devices = db_mapping.db_classes.devices
+db_client = DBClient(db_config=time_travelers_db_config)
+db_mapping = DBMapper(db_client=db_client)
+Persons = db_mapping.get_model("persons")
+Trips = db_mapping.get_model("trips")
+TripPersons = db_mapping.get_model("trip_persons")
+Dates = db_mapping.get_model("dates")
+Movies = db_mapping.get_model("movies")
+Devices = db_mapping.get_model("devices")
 
 # Aliases for the Dates
 DepartureDates = aliased(Dates)
@@ -32,6 +32,7 @@ router = APIRouter(
     tags=["time_travellers"],
     dependencies=[Depends(BearerAuth())]
 )
+
 
 def get_trips_query(where: tuple = None, with_persons: bool = False) -> dict:
     result = []
