@@ -29,16 +29,19 @@ jobs:
             # Force reset the local branch to match the remote branch
             git checkout ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
-            
-            curl -sSL https://install.python-poetry.org | python3 -
 
-            # if there is no virutal environment, create it
-            if [ ! -d ".venv" ]; then
-              poetry install      
-            fi
-            
-            
-            # update the latest libraries
-            poetry update
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Update dependencies
+        run: poetry update
             
             
