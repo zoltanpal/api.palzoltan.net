@@ -3,7 +3,7 @@ name: Deploy to Server
 on:
   push:
     branches:
-      - feature/refactoring
+      - main
 jobs:
   deploy:
     runs-on: ubuntu-latest
