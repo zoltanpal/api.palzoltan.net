@@ -18,7 +18,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /var/www/api.palzoltan.net_v2
+            cd ${{ secrets.SERVER_DEPLOYMENT_PATH }}
             if [ ! -d ".git" ]; then
               git clone https://github.com/zoltanpal/api.palzoltan.net.git .
             fi
