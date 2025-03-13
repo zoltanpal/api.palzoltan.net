@@ -30,10 +30,14 @@ jobs:
             git checkout ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
             
+            curl -sSL https://install.python-poetry.org | python3 -
+
             # if there is no virutal environment, create it
             if [ ! -d ".venv" ]; then
               poetry install      
             fi
+            
+            
             # update the latest libraries
             poetry update
             
