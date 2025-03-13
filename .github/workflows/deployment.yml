@@ -29,4 +29,12 @@ jobs:
             # Force reset the local branch to match the remote branch
             git checkout ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
-
+            
+            # if there is no virutal environment, create it
+            if [ ! -d ".venv" ]; then
+              poetry install      
+            fi
+            # update the latest libraries
+            poetry update
+            
+            
