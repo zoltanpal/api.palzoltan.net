@@ -1,9 +1,19 @@
 name: Deploy API
 
+#on:
+#  push:
+#    branches:
+#      - feature/refactoring
+
 on:
-  push:
-    branches:
-      - feature/refactoring
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        required: true
+        default: "main"
+
+
 
 jobs:
   deploy:
