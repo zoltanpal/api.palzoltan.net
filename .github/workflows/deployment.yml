@@ -3,7 +3,7 @@ name: Deploy API
 on:
   push:
     branches:
-      - feature/refactoring  # Adjust branch name if needed
+      - feature/refactoring
 
 jobs:
   deploy:
@@ -47,5 +47,5 @@ jobs:
             # Install dependencies
             poetry install --no-root
 
-            # Optional: Update dependencies only if needed
+            # Update dependencies only if needed
             poetry update
