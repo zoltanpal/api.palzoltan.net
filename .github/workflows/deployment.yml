@@ -1,4 +1,4 @@
-name: Deploy API
+name: Deploy API to Server
 
 #on:
 #  push:
@@ -12,8 +12,6 @@ on:
         description: "Branch to deploy"
         required: true
         default: "main"
-
-
 
 jobs:
   deploy:
