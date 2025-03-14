@@ -1,12 +1,14 @@
-name: Deploy to Server
+name: Deploy API
 
 on:
   push:
     branches:
-      - main
+      - feature/refactoring  # Adjust branch name if needed
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,32 +21,31 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd ${{ secrets.SERVER_DEPLOYMENT_PATH }}
+
+            # Clone repo if missing
             if [ ! -d ".git" ]; then
               git clone https://github.com/zoltanpal/api.palzoltan.net.git .
+              git checkout ${{ github.ref_name }}
+            else
+              git fetch origin
+              git checkout ${{ github.ref_name }}
+              git pull --rebase origin ${{ github.ref_name }}
             fi
-  
-            # Fetch the latest changes
-            git fetch origin
-  
-            # Force reset the local branch to match the remote branch
-            git checkout ${{ github.ref_name }}
-            git reset --hard origin/${{ github.ref_name }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
+            # Set up Python & Poetry
+            export POETRY_HOME=$HOME/.poetry
+            export PATH="$POETRY_HOME/bin:$PATH"
 
-      - name: Install Poetry
-        run: curl -sSL https://install.python-poetry.org | python3 -
+            if ! command -v poetry &> /dev/null; then
+              curl -sSL https://install.python-poetry.org | python3 -
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
 
-      - name: Poetry config
-        run: poetry config virtualenvs.in-project true
+            # Ensure poetry uses in-project venv
+            poetry config virtualenvs.in-project true
 
-      - name: Install dependencies
-        run: poetry install
+            # Install dependencies
+            poetry install --no-root
 
-      - name: Update dependencies
-        run: poetry update
-            
-            
+            # Optional: Update dependencies only if needed
+            poetry update
