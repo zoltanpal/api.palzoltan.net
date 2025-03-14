@@ -1,10 +1,5 @@
 name: Deploy API to Server
 
-#on:
-#  push:
-#    branches:
-#      - feature/refactoring
-
 on:
   workflow_dispatch:
     inputs:
