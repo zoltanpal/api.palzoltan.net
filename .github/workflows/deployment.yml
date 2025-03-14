@@ -38,8 +38,8 @@ jobs:
             git checkout ${{ github.ref_name }}
 
             # Set up Python & Poetry
-#            export POETRY_HOME=$HOME/.poetry
-#            export PATH="$POETRY_HOME/bin:$HOME/.local/bin:$PATH"
+            export POETRY_HOME=$HOME/.poetry
+            export PATH="$POETRY_HOME/bin:$HOME/.local/bin:$PATH"
 
             if ! command -v poetry &> /dev/null; then
               curl -sSL https://install.python-poetry.org | python3 -
