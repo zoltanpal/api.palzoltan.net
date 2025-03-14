@@ -26,15 +26,20 @@ jobs:
             if [ ! -d ".git" ]; then
               git clone https://github.com/zoltanpal/api.palzoltan.net.git .
               git checkout ${{ github.ref_name }}
-            else
-              git fetch origin
-              git checkout ${{ github.ref_name }}
-              git pull --rebase origin ${{ github.ref_name }}
             fi
 
+            # Fetch latest changes
+            git fetch origin
+
+            # Hard reset to match the latest remote state
+            git reset --hard origin/${{ github.ref_name }}
+            git clean -fd  # Remove untracked files
+
+            git checkout ${{ github.ref_name }}
+
             # Set up Python & Poetry
-            export POETRY_HOME=$HOME/.poetry
-            export PATH="$POETRY_HOME/bin:$PATH"
+#            export POETRY_HOME=$HOME/.poetry
+#            export PATH="$POETRY_HOME/bin:$HOME/.local/bin:$PATH"
 
             if ! command -v poetry &> /dev/null; then
               curl -sSL https://install.python-poetry.org | python3 -
@@ -46,6 +51,3 @@ jobs:
 
             # Install dependencies
             poetry install --no-root
-
-            # Update dependencies only if needed
-            poetry update
