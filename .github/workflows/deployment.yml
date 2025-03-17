@@ -24,7 +24,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             # Find and kill the running uvicorn process
-            pgrep -f "uvicorn main:app" | xargs -r kill
+            pgrep -f "uvicorn main:app" | xargs -r kill || true
 
             cd ${{ secrets.SERVER_DEPLOYMENT_PATH }}
 
@@ -68,3 +68,6 @@ jobs:
 
             # Start the API
             nohup poetry run python -m uvicorn main:app > fastapi.log 2>&1 &
+
+            # Confirm the process is running
+            pgrep -f "uvicorn main:app" || echo "Failed to start FastAPI"
