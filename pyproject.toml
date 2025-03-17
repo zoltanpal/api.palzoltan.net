@@ -17,7 +17,7 @@ psycopg2-binary = "^2.9.10"
 python-multipart = "^0.0.20"
 pydantic = "^2.10.6"
 pyjwt = "^2.10.1"
-palzlib = {path = "../libs/palzlib/dist/palzlib-0.3.1.tar.gz"}
+palzlib = {path = "../libs/palzlib/dist/palzlib-0.4.1.tar.gz"}
 
 [build-system]
 requires = ["poetry-core"]

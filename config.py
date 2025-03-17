@@ -2,7 +2,6 @@
 project configuration
 """
 
-import copy
 import os
 
 from dotenv import load_dotenv
@@ -40,6 +39,7 @@ AUTH_TOKEN = os.getenv("AUTH_TOKEN", default="")
 
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY")
 
+
 # Database Configuration
 def get_db_config(db_name: str) -> DBConfig:
     return DBConfig(
@@ -50,6 +50,7 @@ def get_db_config(db_name: str) -> DBConfig:
         password=os.getenv("DB_PASSWORD", "mysecretpw"),
         dbname=db_name,
     )
+
 
 psql_config = get_db_config(os.getenv("DB_NAME", "postgres"))
 time_travelers_db_config = get_db_config("time_travellers")
