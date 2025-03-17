@@ -24,7 +24,28 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             # Find and kill the running uvicorn process
-            pgrep -f "uvicorn main:app" | xargs -r kill || true
+            # pgrep -f "uvicorn main:app" | xargs -r kill || true
+
+            # Find uvicorn process
+            UVICORN_PID=$(pgrep -f "uvicorn main:app")
+
+            # Kill process only if found
+            if [ -n "$UVICORN_PID" ]; then
+              echo "Stopping FastAPI (PID: $UVICORN_PID)..."
+              kill "$UVICORN_PID"
+
+              # Wait for process to exit
+              sleep 2
+
+              # Ensure it's fully stopped
+              if pgrep -f "uvicorn main:app"; then
+                echo "Process still running, force killing..."
+                kill -9 "$UVICORN_PID"
+              fi
+            else
+              echo "No running FastAPI process found."
+            fi
+
 
             cd ${{ secrets.SERVER_DEPLOYMENT_PATH }}
 
