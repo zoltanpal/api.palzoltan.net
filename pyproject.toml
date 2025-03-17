@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "api.palzoltan.net"
-version = "2.1.0"
+version = "2.2.0"
 description = ""
 authors = ["Zoltan Pal <palzoltanet@gmail.com>"]
 readme = "README.md"
@@ -9,11 +9,9 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = "^0.115.7"
-sqlalchemy = "^2.0.37"
 uvicorn = "^0.34.0"
 python-dotenv = "^1.0.1"
 requests = "^2.32.3"
-psycopg2-binary = "^2.9.10"
 python-multipart = "^0.0.20"
 pydantic = "^2.10.6"
 pyjwt = "^2.10.1"
