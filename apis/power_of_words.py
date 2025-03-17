@@ -1,8 +1,9 @@
-# https://bl.ocks.org/vasturiano/ded69192b8269a78d2d97e24211e64e0
+from collections import Counter
 from http import HTTPStatus
+from typing import List
 
-# https://bl.ocks.org/vasturiano/ded69192b8269a78d2d97e24211e64e0
 from fastapi import APIRouter, Depends
+from nltk.corpus import stopwords
 from palzlib.database.db_client import DBClient
 from palzlib.database.db_mapper import DBMapper
 from sqlalchemy import case, func
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
 from config import pow_db_config
+from libs.auth.bearer_token import BearerAuth
 from libs.responses import responses
 
 db_client = DBClient(db_config=pow_db_config)
@@ -17,13 +19,27 @@ db_mapper = DBMapper(db_client=db_client)
 Feeds = db_mapper.get_model("feeds")
 FeedSentiments = db_mapper.get_model("feed_sentiments")
 
-from libs.auth.bearer_token import BearerAuth
-
 router = APIRouter(
     prefix="/power_of_words",
     tags=["power_of_words"],
     dependencies=[Depends(BearerAuth())],
 )
+
+STOPWORDS = stopwords.words("hungarian")
+
+
+@router.get("/most_common_words", status_code=HTTPStatus.OK)
+async def most_common_words(
+    start_date: str, end_date: str, db: Session = Depends(db_client.get_session)
+):
+    cursor_result = db.query(Feeds.words).filter(
+        Feeds.feed_date.between(start_date, end_date)
+    )
+    words: List[str] = []
+    for row_words in list(cursor_result):
+        words.extend(word for word in row_words[0] if word not in STOPWORDS)
+
+    return Counter(words).most_common(20)
 
 
 @router.get("/count_sentiments", status_code=HTTPStatus.OK)
