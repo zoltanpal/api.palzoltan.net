@@ -23,6 +23,9 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            # Find and kill the running uvicorn process
+            pgrep -f "uvicorn main:app" | xargs -r kill
+
             cd ${{ secrets.SERVER_DEPLOYMENT_PATH }}
 
             # Clone repo if missing
@@ -43,22 +46,25 @@ jobs:
             # Set up Python & Poetry
             export POETRY_HOME=$HOME/.poetry
             export PATH="$POETRY_HOME/bin:$HOME/.local/bin:$PATH"
-            
+
             # Install Poetry if not available
             if ! command -v poetry &> /dev/null; then
               curl -sSL https://install.python-poetry.org | python3 -
               export PATH="$HOME/.local/bin:$PATH"
             fi
-            
+
             # Ensure Poetry uses in-project virtual environments
             poetry config virtualenvs.in-project true
-            
+
             # Clear Poetry cache (optional but useful if hashes mismatch)
             poetry cache clear pypi --all
-            
+
             # Remove old lock file and regenerate
             rm -f poetry.lock
             poetry lock
-            
+
             # Install dependencies (including the project itself)
             poetry install
+
+            # Start the API
+            nohup poetry run python -m uvicorn main:app > fastapi.log 2>&1 &
