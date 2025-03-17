@@ -48,6 +48,9 @@ jobs:
               curl -sSL https://install.python-poetry.org | python3 -
               export PATH="$HOME/.local/bin:$PATH"
             fi
+            
+            # Clear the Poetry cache
+            poetry cache clear pypi --all
 
             # Ensure poetry uses in-project venv
             poetry config virtualenvs.in-project true
