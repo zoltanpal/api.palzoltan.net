@@ -30,7 +30,10 @@ STOPWORDS = stopwords.words("hungarian")
 
 @router.get("/most_common_words", status_code=HTTPStatus.OK)
 async def most_common_words(
-    start_date: str, end_date: str, db: Session = Depends(db_client.get_session)
+    start_date: str,
+    end_date: str,
+    nm_common: int = 20,
+    db: Session = Depends(db_client.get_session),
 ):
     cursor_result = db.query(Feeds.words).filter(
         Feeds.feed_date.between(start_date, end_date)
@@ -39,7 +42,7 @@ async def most_common_words(
     for row_words in list(cursor_result):
         words.extend(word for word in row_words[0] if word not in STOPWORDS)
 
-    return Counter(words).most_common(20)
+    return Counter(words).most_common(nm_common)
 
 
 @router.get("/count_sentiments", status_code=HTTPStatus.OK)
