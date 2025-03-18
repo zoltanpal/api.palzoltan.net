@@ -74,3 +74,7 @@ async def count_sentiments(
         "negative_sentiments": result.negative_sentiments or 0,
         "neutral_sentiments": result.neutral_sentiments or 0,
     }
+
+@router.get("/test", status_code=HTTPStatus.OK)
+async def test():
+    pass
