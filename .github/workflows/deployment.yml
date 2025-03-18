@@ -27,26 +27,23 @@ jobs:
             # pgrep -f "uvicorn main:app" | xargs -r kill || true
 
             # Find uvicorn process
-            UVICORN_PID=$(pgrep -f "uvicorn main:app")
-
-            # Kill process only if found
+            UVICORN_PID=$(pgrep -f "uvicorn main:app" | sort -n | head -n 1)
+            
             if [ -n "$UVICORN_PID" ]; then
               echo "Stopping FastAPI (PID: $UVICORN_PID)..."
               kill "$UVICORN_PID"
-
-              # Wait for process to exit
-              sleep 2
-
+              sleep 2  # Allow process to exit
+            
               # Ensure it's fully stopped
-              if pgrep -f "uvicorn main:app"; then
+              if pgrep -f "uvicorn main:app" | grep -q "$UVICORN_PID"; then
                 echo "Process still running, force killing..."
                 kill -9 "$UVICORN_PID"
               fi
             else
               echo "No running FastAPI process found."
             fi
-
-
+            
+            # navigate to the work directory
             cd ${{ secrets.SERVER_DEPLOYMENT_PATH }}
 
             # Clone repo if missing
