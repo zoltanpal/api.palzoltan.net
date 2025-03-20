@@ -1,17 +1,19 @@
 from collections import Counter
+from datetime import date
 from http import HTTPStatus
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from nltk.corpus import stopwords
 from palzlib.database.db_client import DBClient
 from palzlib.database.db_mapper import DBMapper
-from sqlalchemy import case, func
+from sqlalchemy import and_, case, func
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
 from config import pow_db_config
 from libs.auth.bearer_token import BearerAuth
+from libs.functions import to_dict
 from libs.responses import responses
 
 db_client = DBClient(db_config=pow_db_config)
@@ -26,6 +28,64 @@ router = APIRouter(
 )
 
 STOPWORDS = stopwords.words("hungarian")
+
+
+@router.get("/feeds")
+async def feeds(
+    start_date: date,
+    end_date: date,
+    sources: Optional[List[int]] = Query(
+        None, description="Comma-separated list of source IDs"
+    ),
+    words: Optional[List[str]] = Query(
+        None, description="Comma-separated list of words"
+    ),
+    free_text: Optional[str] = Query(None, description="Optional free text search"),
+    page: int = 1,
+    items_per_page: int = 30,
+    db: Session = Depends(db_client.get_session),
+):
+
+    query_cond = []
+
+    if start_date:
+        query_cond.append(Feeds.feed_date >= start_date)
+    if end_date:
+        query_cond.append(Feeds.feed_date <= end_date)
+    if words:
+        words_cond = [word.lower().strip() for word in words]
+        query_cond.append(Feeds.words.contains(words_cond))
+    if sources:
+        query_cond.append(Feeds.source_id.in_(sources))
+    if free_text:
+        query_cond.append(Feeds.title.ilike(f"%{free_text}%"))
+
+    conditions = and_(*query_cond) if query_cond else None
+
+    query = (
+        db.query(Feeds, FeedSentiments)
+        .join(
+            FeedSentiments,
+            and_(
+                FeedSentiments.feed_id == Feeds.id,
+                FeedSentiments.model_id == 1,
+            ),
+        )
+        .filter(conditions)
+        .order_by(Feeds.published.desc())
+    )
+
+    total_items = query.count()
+    paginated_query = query.limit(items_per_page).offset((page - 1) * items_per_page)
+
+    results = db.execute(paginated_query).all()
+
+    feeds = [
+        {"feeds": to_dict(feed), "feed_sentiments": to_dict(sentiment)}
+        for feed, sentiment in results
+    ]
+
+    return {"total": total_items, "page": page, "feeds": feeds}
 
 
 @router.get("/most_common_words", status_code=HTTPStatus.OK)
