@@ -2,11 +2,6 @@ name: Deploy API to Server
 
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        description: "Branch to deploy"
-        required: true
-        default: "main"
 
 jobs:
   deploy:
@@ -28,12 +23,12 @@ jobs:
 
             # Find uvicorn process
             UVICORN_PID=$(pgrep -f "uvicorn main:app" | sort -n | head -n 1)
-            
+
             if [ -n "$UVICORN_PID" ]; then
               echo "Stopping FastAPI (PID: $UVICORN_PID)..."
               kill "$UVICORN_PID"
               sleep 2  # Allow process to exit
-            
+
               # Ensure it's fully stopped
               if pgrep -f "uvicorn main:app" | grep -q "$UVICORN_PID"; then
                 echo "Process still running, force killing..."
@@ -42,7 +37,7 @@ jobs:
             else
               echo "No running FastAPI process found."
             fi
-            
+
             # navigate to the work directory
             cd ${{ secrets.SERVER_DEPLOYMENT_PATH }}
 
