@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends, Query
 from nltk.corpus import stopwords
 from palzlib.database.db_client import DBClient
 from palzlib.database.db_mapper import DBMapper
-from sqlalchemy import and_, case, func
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
 from config import pow_db_config
 from libs.auth.bearer_token import BearerAuth
-from libs.functions import to_dict
+from libs.functions import generate_sentiment_by_source_series, to_dict
 from libs.responses import responses
 
 db_client = DBClient(db_config=pow_db_config)
@@ -86,6 +86,50 @@ async def feeds(
     ]
 
     return {"total": total_items, "page": page, "feeds": feeds}
+
+
+@router.get("/get_sentiment_grouped", status_code=HTTPStatus.OK)
+async def get_sentiment_grouped(
+    start_date: date,
+    end_date: date,
+    words: Optional[List[str]] = Query(
+        None, description="Comma-separated list of words"
+    ),
+    free_text: Optional[str] = Query(None, description="Optional free text search"),
+    group_by="source",
+    order_by="source",
+    db: Session = Depends(db_client.get_session),
+):
+
+    group_by = Feeds.source_id if group_by == "source" else Feeds.feed_date
+    order_by = Feeds.source_id.asc() if order_by == "source" else Feeds.feed_da
+
+    query = (
+        select(
+            group_by,
+            func.count(Feeds.id).label("count"),
+            FeedSentiments.sentiment_key.label("max_sentiment_column"),
+        )
+        .join(
+            FeedSentiments,
+            (Feeds.id == FeedSentiments.feed_id) & (FeedSentiments.model_id == 1),
+            isouter=True,
+        )
+        .where(Feeds.published.between(start_date, end_date))
+        .group_by(group_by, FeedSentiments.sentiment_key)
+        .order_by(order_by)
+    )
+
+    # Apply additional filters if present
+    if words:
+        query = query.where(Feeds.words.op("@>")(words))
+    if free_text:
+        query = query.where(func.lower(Feeds.title).ilike(f"%{free_text.lower()}%"))
+
+    raw_results = db.execute(query).all()
+    results = generate_sentiment_by_source_series(raw_results)
+
+    return results
 
 
 @router.get("/most_common_words", status_code=HTTPStatus.OK)
