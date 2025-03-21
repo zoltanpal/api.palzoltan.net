@@ -81,7 +81,7 @@ async def feeds(
     results = db.execute(paginated_query).all()
 
     feeds = [
-        {"feeds": to_dict(feed), "feed_sentiments": to_dict(sentiment)}
+        {"feed": to_dict(feed), "feed_sentiments": to_dict(sentiment)}
         for feed, sentiment in results
     ]
 
