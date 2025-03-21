@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from nltk.corpus import stopwords
 from palzlib.database.db_client import DBClient
 from palzlib.database.db_mapper import DBMapper
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, asc, case, func, select
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
@@ -96,16 +96,20 @@ async def get_sentiment_grouped(
         None, description="Comma-separated list of words"
     ),
     free_text: Optional[str] = Query(None, description="Optional free text search"),
-    group_by="source",
+    group_by: str = "source",
     db: Session = Depends(db_client.get_session),
 ):
-
-    group_by = Feeds.source_id if group_by == "source" else Feeds.feed_date
-    order_by = Feeds.source_id.asc() if group_by == "source" else Feeds.feed_date.asc()
+    # Determine grouping and ordering
+    if group_by == "source":
+        group_by_column = Feeds.source_id
+        order_by_column = asc(Feeds.source_id)
+    else:
+        group_by_column = Feeds.feed_date
+        order_by_column = asc(Feeds.feed_date)
 
     query = (
         select(
-            group_by,
+            group_by_column.label("group_by"),
             func.count(Feeds.id).label("count"),
             FeedSentiments.sentiment_key.label("max_sentiment_column"),
         )
@@ -115,8 +119,8 @@ async def get_sentiment_grouped(
             isouter=True,
         )
         .where(Feeds.published.between(start_date, end_date))
-        .group_by(group_by, FeedSentiments.sentiment_key)
-        .order_by(order_by)
+        .group_by(group_by_column, FeedSentiments.sentiment_key)
+        .order_by(order_by_column)
     )
 
     # Apply additional filters if present
