@@ -97,12 +97,11 @@ async def get_sentiment_grouped(
     ),
     free_text: Optional[str] = Query(None, description="Optional free text search"),
     group_by="source",
-    order_by="source",
     db: Session = Depends(db_client.get_session),
 ):
 
     group_by = Feeds.source_id if group_by == "source" else Feeds.feed_date
-    order_by = Feeds.source_id.asc() if order_by == "source" else Feeds.feed_da
+    order_by = Feeds.source_id.asc() if group_by == "source" else Feeds.feed_date.asc()
 
     query = (
         select(
