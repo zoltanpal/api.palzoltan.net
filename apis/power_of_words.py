@@ -44,8 +44,8 @@ async def feeds(
     db: Session = Depends(db_client.get_session),
 ):
     filters = FeedDBFilters(
-        start_date=str(start_date),
-        end_date=str(end_date),
+        start_date=str(f"{start_date} 00:00:00"),
+        end_date=str(f"{end_date} 23:59:59"),
         words=words or [],
         sources=sources or [],
         free_text=free_text or "",
