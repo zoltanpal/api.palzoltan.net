@@ -92,8 +92,8 @@ async def get_sentiment_grouped(
     db: Session = Depends(db_client.get_session),
 ):
     filters = FeedDBFilters(
-        start_date=str(start_date),
-        end_date=str(end_date),
+        start_date=str(f"{start_date} 00:00:00"),
+        end_date=str(f"{end_date} 23:59:59"),
         words=words or [],
         free_text=free_text or "",
     )
@@ -177,7 +177,9 @@ async def get_extreme_sentiments(
     db: Session = Depends(db_client.get_session),
 ):
     filters = FeedDBFilters(
-        start_date=start_date, end_date=end_date, sources=sources if sources else []
+        start_date=str(f"{start_date} 00:00:00"),
+        end_date=str(f"{end_date} 23:59:59"),
+        sources=sources if sources else [],
     )
     filters.Feed = Feeds
 
