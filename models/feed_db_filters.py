@@ -33,9 +33,9 @@ class FeedDBFilters:
         conditions = []
 
         if self.start_date:
-            conditions.append(self.Feed.feed_date >= self.start_date)
+            conditions.append(self.Feed.published >= self.start_date)
         if self.end_date:
-            conditions.append(self.Feed.feed_date <= self.end_date)
+            conditions.append(self.Feed.published <= self.end_date)
         if self.words:
             words_cond = [word.lower().strip() for word in self.words]
             conditions.append(self.Feed.words.contains(words_cond))
