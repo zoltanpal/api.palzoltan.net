@@ -53,11 +53,12 @@ async def feeds(
     filters.Feed = Feeds
 
     query = (
-        db.query(Feeds, FeedSentiments)
+        db.query(Feeds, FeedSentiments, Sources)
         .join(
             FeedSentiments,
             and_(FeedSentiments.feed_id == Feeds.id, FeedSentiments.model_id == 1),
         )
+        .join(Sources, Feeds.source_id == Sources.id)
         .filter(filters.conditions)
         .order_by(Feeds.published.desc())
     )
@@ -71,8 +72,12 @@ async def feeds(
         "total": total_items,
         "page": page,
         "feeds": [
-            {"feed": to_dict(feed), "feed_sentiments": to_dict(sentiment)}
-            for feed, sentiment in results
+            {
+                "feed": to_dict(feed),
+                "feed_sentiments": to_dict(sentiment),
+                "source": to_dict(source),
+            }
+            for feed, sentiment, source in results
         ],
     }
 
