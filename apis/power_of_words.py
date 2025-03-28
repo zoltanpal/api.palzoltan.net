@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from nltk.corpus import stopwords
 from palzlib.database.db_client import DBClient
 from palzlib.database.db_mapper import DBMapper
-from sqlalchemy import and_, asc, case, func, or_, select
+from sqlalchemy import and_, asc, case, func, or_, select, text
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
@@ -207,3 +207,79 @@ async def get_extreme_sentiments(
     results = db.execute(query).mappings().all()
 
     return results
+
+
+@router.get("/bias_detection")
+async def bias_detection(
+    start_date: str,
+    end_date: str,
+    words: List[str] = Query(None),
+    sources: Optional[List[int]] = Query(None),
+    db: Session = Depends(db_client.get_session),
+):
+    sql = text(
+        """
+            WITH input_words AS (
+            SELECT unnest(:words) AS input_word
+        ),
+        matched_feeds AS (
+            SELECT
+                f.id AS feed_id,
+                f.source_id,
+                f.feed_date,
+                s.name AS source_name,
+                f.words,
+                f.search_vector,
+                fs.sentiment_key,
+                fs.sentiment_value
+            FROM feeds f
+            JOIN feed_sentiments fs ON fs.feed_id = f.id
+            JOIN sources s ON f.source_id = s.id
+            WHERE
+                f.published BETWEEN :start_date AND :end_date
+                AND f.search_vector @@ to_tsquery('hungarian', :tsquery)
+        ),
+        word_match AS (
+            SELECT
+                mf.source_name,
+                iw.input_word,
+                mf.sentiment_key,
+                mf.sentiment_value
+            FROM matched_feeds mf
+            JOIN input_words iw
+                ON EXISTS (
+                    SELECT 1
+                    FROM unnest(mf.words) w
+                    WHERE w ILIKE iw.input_word || '%'
+                )
+        )
+        SELECT
+            source_name,
+            input_word AS keyword,
+            COUNT(*) AS mention_count,
+            -- Net Sentiment Score (Bias Indicator)
+            (SUM(CASE WHEN sentiment_key = 'positive' THEN sentiment_value ELSE 0 END) -
+             SUM(CASE WHEN sentiment_key = 'negative' THEN sentiment_value ELSE 0 END))
+            / NULLIF(COUNT(*), 0) AS net_sentiment_score,
+             ROUND(COALESCE(STDDEV(sentiment_value)::NUMERIC, 0), 2) AS sentiment_std_dev
+
+        FROM word_match
+        GROUP BY source_name, input_word
+        ORDER BY input_word, net_sentiment_score DESC;
+    """
+    )
+
+    # Create to_tsquery-compatible string from words
+    tsquery_string = " | ".join(words)
+    result = db.execute(
+        sql,
+        {
+            "words": words,
+            "start_date": f"{start_date} 00:00:00",
+            "end_date": f"{end_date} 23:59:59",
+            "tsquery": tsquery_string,
+        },
+    )
+
+    rows = result.mappings().fetchall()
+    return rows
