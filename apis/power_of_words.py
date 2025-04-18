@@ -195,8 +195,8 @@ async def get_extreme_sentiments(
         .join(Sources, Feeds.source_id == Sources.id)
         .where(
             or_(
-                FeedSentiments.sentiment_value > 0.8,
-                FeedSentiments.sentiment_value < -0.8,
+                FeedSentiments.sentiment_value > 0.6,
+                FeedSentiments.sentiment_value < -0.6,
             ),
             FeedSentiments.sentiment_key != "neutral",
             filters.conditions,
