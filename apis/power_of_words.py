@@ -190,6 +190,7 @@ async def get_extreme_sentiments(
             func.DATE(Feeds.published),
             FeedSentiments.sentiment_key,
             FeedSentiments.sentiment_value,
+            FeedSentiments.sentimnet_compound,
         )
         .join(FeedSentiments, FeedSentiments.feed_id == Feeds.id)
         .join(Sources, Feeds.source_id == Sources.id)
