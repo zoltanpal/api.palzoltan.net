@@ -210,6 +210,32 @@ async def get_extreme_sentiments(
     return results
 
 
+@router.get("/top_feeds")
+async def top_feeds(
+    pos_neg: str = "positive",
+    limit: int = 5,
+    db: Session = Depends(db_client.get_session),
+):
+    query = (
+        db.query(
+            Feeds.title,
+            Feeds.published,
+            Sources.name,
+            FeedSentiments.sentiment_value,
+            FeedSentiments.sentiment_compound,
+        )
+        .join(Feeds, FeedSentiments.feed_id == Feeds.id)
+        .join(Sources, Feeds.source_id == Sources.id)
+        .filter(FeedSentiments.sentiment_key == pos_neg.lower())
+        .order_by(FeedSentiments.sentiment_value.desc())
+        .limit(limit)
+    )
+
+    results = db.execute(query).mappings().all()
+
+    return results
+
+
 @router.get("/bias_detection")
 async def bias_detection(
     start_date: str,
