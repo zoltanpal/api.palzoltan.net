@@ -212,6 +212,8 @@ async def get_extreme_sentiments(
 
 @router.get("/top_feeds")
 async def top_feeds(
+    start_date: str,
+    end_date: str,
     pos_neg: str = "positive",
     limit: int = 5,
     db: Session = Depends(db_client.get_session),
@@ -226,7 +228,10 @@ async def top_feeds(
         )
         .join(Feeds, FeedSentiments.feed_id == Feeds.id)
         .join(Sources, Feeds.source_id == Sources.id)
-        .filter(FeedSentiments.sentiment_key == pos_neg.lower())
+        .filter(
+            Feeds.feed_date.between(start_date, end_date),
+            FeedSentiments.sentiment_key == pos_neg.lower(),
+        )
         .order_by(FeedSentiments.sentiment_value.desc())
         .limit(limit)
     )
