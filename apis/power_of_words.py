@@ -353,7 +353,7 @@ async def correlation_between_sources(
         LEFT JOIN sources AS s ON f.source_id = s.id
         LEFT JOIN LATERAL unnest(string_to_array(:words_array, ',')) AS word ON true
         WHERE f.search_vector @@ to_tsquery('hungarian', :tsquery)
-        and f.published :start_date AND :end_date
+        AND f.published BETWEEN :start_date AND :end_date
         GROUP BY word, s.name
         ORDER BY word, s.name;
     """
@@ -362,7 +362,6 @@ async def correlation_between_sources(
     result = db.execute(
         sql,
         {
-            "words": words,
             "start_date": f"{start_date} 00:00:00",
             "end_date": f"{end_date} 23:59:59",
             "words_array": ",".join(words),
