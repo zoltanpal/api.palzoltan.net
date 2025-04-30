@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "api.palzoltan.net"
-version = "2.2.0"
+version = "2.2.1"
 description = ""
 authors = ["Zoltan Pal <palzoltanet@gmail.com>"]
 readme = "README.md"
