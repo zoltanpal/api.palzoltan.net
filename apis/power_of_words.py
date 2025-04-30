@@ -315,3 +315,61 @@ async def bias_detection(
 
     rows = result.mappings().fetchall()
     return rows
+
+
+@router.get("/correlation_between_sources")
+async def correlation_between_sources(
+    start_date: str,
+    end_date: str,
+    words: List[str] = Query(None),
+    sources: Optional[List[int]] = Query(None),
+    db: Session = Depends(db_client.get_session),
+):
+
+    sql = text(
+        """
+        SELECT
+            word,
+            s.name as sourcename,
+            min(fs.sentiment_compound) AS min_compound,
+            max(fs.sentiment_compound) AS max_compound,
+            AVG(fs.sentiment_compound) AS avg_compound,
+            -- Positive Sentiments
+            sum(CASE WHEN fs.sentiment_key = 'positive' THEN 1 ELSE 0 END) AS nm_of_positive,
+            AVG(CASE WHEN fs.sentiment_key = 'positive' THEN sentiment_value END) AS avg_positive,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN fs.sentiment_key = 'positive'
+                THEN sentiment_value END) AS median_positive,
+            -- Negative Sentiments
+            sum(CASE WHEN fs.sentiment_key = 'negative' THEN 1 ELSE 0 END) AS nm_of_negative,
+            AVG(CASE WHEN fs.sentiment_key = 'negative' THEN sentiment_value END) AS avg_negative,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN fs.sentiment_key = 'negative'
+                THEN sentiment_value END) AS median_negative,
+            -- Neutral Sentiments
+            sum(CASE WHEN fs.sentiment_key = 'neutral' THEN 1 ELSE 0 END) AS nm_of_neutral,
+            AVG(CASE WHEN fs.sentiment_key = 'neutral' THEN sentiment_value END) AS avg_neutral,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN fs.sentiment_key = 'neutral'
+                THEN sentiment_value END) AS median_neutral
+        FROM feeds AS f
+        LEFT JOIN feed_sentiments AS fs ON f.id = fs.feed_id
+        LEFT JOIN sources AS s ON f.source_id = s.id
+        LEFT JOIN LATERAL unnest(string_to_array(:words_array, ',')) AS word ON true
+        WHERE f.search_vector @@ to_tsquery('hungarian', :tsquery)
+        and f.published :start_date AND :end_date
+        GROUP BY word, s.name
+        ORDER BY word, s.name;
+    """
+    )
+
+    result = db.execute(
+        sql,
+        {
+            "words": words,
+            "start_date": f"{start_date} 00:00:00",
+            "end_date": f"{end_date} 23:59:59",
+            "words_array": ",".join(words),
+            "tsquery": " | ".join(words),
+        },
+    )
+
+    rows = result.mappings().fetchall()
+    return rows
