@@ -335,16 +335,22 @@ async def correlation_between_sources(
             AVG(fs.sentiment_compound) AS avg_compound,
             -- Positive Sentiments
             sum(CASE WHEN fs.sentiment_key = 'positive' THEN 1 ELSE 0 END) AS nm_of_positive,
+            MAX(CASE WHEN fs.sentiment_key = 'positive' THEN sentiment_value END) AS max_positive,
+            MIN(CASE WHEN fs.sentiment_key = 'positive' THEN sentiment_value END) AS min_positive,
             AVG(CASE WHEN fs.sentiment_key = 'positive' THEN sentiment_value END) AS avg_positive,
             PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN fs.sentiment_key = 'positive'
                 THEN sentiment_value END) AS median_positive,
             -- Negative Sentiments
             sum(CASE WHEN fs.sentiment_key = 'negative' THEN 1 ELSE 0 END) AS nm_of_negative,
+            MAX(CASE WHEN fs.sentiment_key = 'negative' THEN sentiment_value END) AS max_negative,
+            MIN(CASE WHEN fs.sentiment_key = 'negative' THEN sentiment_value END) AS min_negative,
             AVG(CASE WHEN fs.sentiment_key = 'negative' THEN sentiment_value END) AS avg_negative,
             PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN fs.sentiment_key = 'negative'
                 THEN sentiment_value END) AS median_negative,
             -- Neutral Sentiments
             sum(CASE WHEN fs.sentiment_key = 'neutral' THEN 1 ELSE 0 END) AS nm_of_neutral,
+            MAX(CASE WHEN fs.sentiment_key = 'neutral' THEN sentiment_value END) AS max_neutral,
+            MIN(CASE WHEN fs.sentiment_key = 'neutral' THEN sentiment_value END) AS min_neutral,
             AVG(CASE WHEN fs.sentiment_key = 'neutral' THEN sentiment_value END) AS avg_neutral,
             PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN fs.sentiment_key = 'neutral'
                 THEN sentiment_value END) AS median_neutral
