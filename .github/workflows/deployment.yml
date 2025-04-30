@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Deploy to DEV Server
+      - name: Deploy to the Server
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.SERVER_HOST }}

@@ -322,7 +322,6 @@ async def correlation_between_sources(
     start_date: str,
     end_date: str,
     words: List[str] = Query(None),
-    sources: Optional[List[int]] = Query(None),
     db: Session = Depends(db_client.get_session),
 ):
 
