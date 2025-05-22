@@ -13,6 +13,10 @@ from palzlib.database.db_mapper import DBMapper
 from palzlib.sentiment_analyzers.factory.sentiment_factory import (
     SentimentAnalyzerFactory,
 )
+from palzlib.sentiment_analyzers.models.sentiments import (
+    LABEL_MAPPING_ROBERTA,
+    Sentiments,
+)
 from sqlalchemy import and_, asc, case, func, or_, select, text
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
@@ -410,16 +414,22 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
         )
 
     feeds = newsapi_result.json().get("articles", [])
+    titles = [feed["title"] for feed in feeds]
+
+    sentiment_predictions = analyzer_hun.pipeline(titles)
 
     results: List[dict] = []
-    for feed in feeds:
-        sentiment_result = analyzer_hun.analyze_text(feed["title"])
+    for feed, prediction in zip(feeds, sentiment_predictions):
+        sentiments = {
+            LABEL_MAPPING_ROBERTA[item["label"]]: round(item["score"], 4)
+            for item in prediction
+        }
         results.append(
             {
                 "title": feed["title"],
                 "source": feed["source"]["name"],
                 "published": feed["publishedAt"],
-                "sentiments": sentiment_result.asdict(),
+                "sentiments": Sentiments(**sentiments).asdict(),
             }
         )
 
