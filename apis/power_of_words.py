@@ -3,8 +3,10 @@ from datetime import date
 from http import HTTPStatus
 from typing import List, Optional
 
-import requests  # type: ignore
-from fastapi import APIRouter, Depends, Query
+import httpx
+
+# import requests  # type: ignore
+from fastapi import APIRouter, Depends, HTTPException, Query
 from nltk.corpus import stopwords
 from palzlib.database.db_client import DBClient
 from palzlib.database.db_mapper import DBMapper
@@ -386,34 +388,36 @@ async def correlation_between_sources(
 
 @router.get("/ondemand_feed_analyse")
 async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
-    if word is None:
-        return JSONResponse(status_code=404, content=responses[404])
+    if not word:
+        raise HTTPException(status_code=404, detail="Word parameter is required")
 
-    url = f"https://newsapi.org/v2/everything?q={word}&"
-    url += f"from={start_date}&sortBy=publishedAt&"
-    url += f"apiKey={config.NEWS_API_KEY}&searchIn=title&"
-    url += f"language={lang}"
+    url = (
+        f"https://newsapi.org/v2/everything?q={word}"
+        f"&from={start_date}&sortBy=publishedAt"
+        f"&apiKey={config.NEWS_API_KEY}&searchIn=title"
+        f"&language={lang}"
+    )
 
-    newsapi_result = requests.get(url)
+    async with httpx.AsyncClient(timeout=30) as client:
+        newsapi_result = await client.get(url)
 
     if newsapi_result.status_code != 200:
-        return JSONResponse(status_code=500, content=newsapi_result.json())
+        raise HTTPException(
+            status_code=newsapi_result.status_code, detail=newsapi_result.text
+        )
 
-    results: List[dict] = []
+    feeds = newsapi_result.json().get("articles", [])
 
-    if newsapi_result.status_code == 200:
-        analyzer = SentimentAnalyzerFactory.get_analyzer("hun")
+    analyzer = SentimentAnalyzerFactory.get_analyzer("hun")
 
-        feeds = newsapi_result.json().get("articles", [])
-        for feed in feeds:
-            sentiment_result = analyzer.analyze_text(feed["title"])
-            results.append(
-                {
-                    "title": feed["title"],
-                    "source": feed["source"]["name"],
-                    "published": feed["publishedAt"],
-                    "sentiments": sentiment_result.asdict(),
-                }
-            )
+    results: List[dict] = [
+        {
+            "title": feed["title"],
+            "source": feed["source"]["name"],
+            "published": feed["publishedAt"],
+            "sentiments": analyzer.analyze_text(feed["title"]).asdict(),
+        }
+        for feed in feeds
+    ]
 
     return results
