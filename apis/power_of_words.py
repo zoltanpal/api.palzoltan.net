@@ -386,6 +386,9 @@ async def correlation_between_sources(
     return rows
 
 
+analyzer_hun = SentimentAnalyzerFactory.get_analyzer("hun")
+
+
 @router.get("/ondemand_feed_analyse")
 async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
     if not word:
@@ -410,7 +413,7 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
 
     results: List[dict] = []
     for feed in feeds:
-        sentiment_result = await async_analyze_text("hun", feed["title"])
+        sentiment_result = analyzer_hun.analyze_text(feed["title"])
         results.append(
             {
                 "title": feed["title"],
