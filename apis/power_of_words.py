@@ -3,14 +3,19 @@ from datetime import date
 from http import HTTPStatus
 from typing import List, Optional
 
+import requests  # type: ignore
 from fastapi import APIRouter, Depends, Query
 from nltk.corpus import stopwords
 from palzlib.database.db_client import DBClient
 from palzlib.database.db_mapper import DBMapper
+from palzlib.sentiment_analyzers.factory.sentiment_factory import (
+    SentimentAnalyzerFactory,
+)
 from sqlalchemy import and_, asc, case, func, or_, select, text
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
+import config
 from config import pow_db_config
 from libs.auth.bearer_token import BearerAuth
 from libs.functions import generate_sentiment_by_source_series, to_dict
@@ -377,3 +382,38 @@ async def correlation_between_sources(
 
     rows = result.mappings().fetchall()
     return rows
+
+
+@router.get("/ondemand_feed_analyse")
+async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
+    if word is None:
+        return JSONResponse(status_code=404, content=responses[404])
+
+    url = f"https://newsapi.org/v2/everything?q={word}&"
+    url += f"from={start_date}&sortBy=publishedAt&"
+    url += f"apiKey={config.NEWS_API_KEY}&searchIn=title&"
+    url += f"language={lang}"
+
+    newsapi_result = requests.get(url)
+
+    if newsapi_result.status_code != 200:
+        return JSONResponse(status_code=500, content=newsapi_result.json())
+
+    results: List[dict] = []
+
+    if newsapi_result.status_code == 200:
+        analyzer = SentimentAnalyzerFactory.get_analyzer("hun")
+
+        feeds = newsapi_result.json().get("articles", [])
+        for feed in feeds:
+            sentiment_result = analyzer.analyze_text(feed["title"])
+            results.append(
+                {
+                    "title": feed["title"],
+                    "source": feed["source"]["name"],
+                    "published": feed["publishedAt"],
+                    "sentiments": sentiment_result.asdict(),
+                }
+            )
+
+    return results
