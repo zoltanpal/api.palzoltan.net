@@ -408,16 +408,24 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
 
     feeds = newsapi_result.json().get("articles", [])
 
-    analyzer = SentimentAnalyzerFactory.get_analyzer("hun")
-
-    results: List[dict] = [
-        {
-            "title": feed["title"],
-            "source": feed["source"]["name"],
-            "published": feed["publishedAt"],
-            "sentiments": analyzer.analyze_text(feed["title"]).asdict(),
-        }
-        for feed in feeds
-    ]
+    results: List[dict] = []
+    for feed in feeds:
+        sentiment_result = await async_analyze_text("hun", feed["title"])
+        results.append(
+            {
+                "title": feed["title"],
+                "source": feed["source"]["name"],
+                "published": feed["publishedAt"],
+                "sentiments": sentiment_result.asdict(),
+            }
+        )
 
     return results
+
+
+async def async_analyze_text(lang: str, text: str):
+    analyzer = SentimentAnalyzerFactory.get_analyzer(lang)
+
+    from fastapi.concurrency import run_in_threadpool
+
+    return await run_in_threadpool(analyzer.analyze_text, text)
