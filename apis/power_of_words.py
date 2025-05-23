@@ -1,4 +1,6 @@
+import asyncio
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from http import HTTPStatus
 from typing import List, Optional
@@ -390,7 +392,8 @@ async def correlation_between_sources(
     return rows
 
 
-analyzer_hun = SentimentAnalyzerFactory.get_analyzer("hun")
+# analyzer_hun = SentimentAnalyzerFactory.get_analyzer("hun")
+executor = ThreadPoolExecutor(max_workers=4)
 
 
 @router.get("/ondemand_feed_analyse")
@@ -414,6 +417,16 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
         )
 
     feeds = newsapi_result.json().get("articles", [])
+    titles = [article["title"] for article in feeds]
+
+    # Offload the CPU-bound work to a thread
+    loop = asyncio.get_event_loop()
+    results = await loop.run_in_executor(executor, analyze_titles_sync, titles, "hun")
+
+    return results
+
+    """
+    feeds = newsapi_result.json().get("articles", [])
     titles = [feed["title"] for feed in feeds]
 
     sentiment_predictions = analyzer_hun.pipeline(titles)
@@ -434,6 +447,26 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
         )
 
     return results
+    """
+
+
+def analyze_titles_sync(titles: list, lang: str) -> list:
+    analyzer = SentimentAnalyzerFactory.get_analyzer(lang)
+    results = analyzer.pipeline(titles)
+
+    output = []
+    for title, prediction in zip(titles, results):
+        sentiments = {
+            LABEL_MAPPING_ROBERTA[item["label"]]: round(item["score"], 4)
+            for item in prediction
+        }
+        output.append(
+            {
+                "title": title,
+                "sentiments": Sentiments(**sentiments).asdict(),
+            }
+        )
+    return output
 
 
 async def async_analyze_text(lang: str, text: str):
