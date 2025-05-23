@@ -417,11 +417,12 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
         )
 
     feeds = newsapi_result.json().get("articles", [])
-    titles = [article["title"] for article in feeds]
 
-    # Offload the CPU-bound work to a thread
+    # Use executor to run sentiment analysis in a background thread
     loop = asyncio.get_event_loop()
-    results = await loop.run_in_executor(executor, analyze_titles_sync, titles, "hun")
+    results = await loop.run_in_executor(
+        executor, analyze_with_details_sync, feeds, "hun"
+    )
 
     return results
 
@@ -450,23 +451,30 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
     """
 
 
-def analyze_titles_sync(titles: list, lang: str) -> list:
+def analyze_with_details_sync(feeds: list, lang: str) -> List[dict]:
+    """
+    Synchronously analyzes sentiment for a list of feeds and returns results with metadata.
+    """
     analyzer = SentimentAnalyzerFactory.get_analyzer(lang)
-    results = analyzer.pipeline(titles)
+    titles = [feed["title"] for feed in feeds]
+    predictions = analyzer.pipeline(titles)
 
-    output = []
-    for title, prediction in zip(titles, results):
+    results = []
+    for feed, prediction in zip(feeds, predictions):
         sentiments = {
             LABEL_MAPPING_ROBERTA[item["label"]]: round(item["score"], 4)
             for item in prediction
         }
-        output.append(
+        results.append(
             {
-                "title": title,
+                "title": feed["title"],
+                "source": feed["source"]["name"],
+                "published": feed["publishedAt"],
                 "sentiments": Sentiments(**sentiments).asdict(),
             }
         )
-    return output
+
+    return results
 
 
 async def async_analyze_text(lang: str, text: str):
