@@ -74,7 +74,7 @@ async def start_analysis(start_date: str, word: str, lang: str = "hu", backgroun
 
     # Launch background chunked analysis
     if background_tasks:
-        background_tasks.add_task(background_chunked_analysis, job_id, lang)
+        background_tasks.add_task(background_chunked_analysis, job_id)
 
     # Return results by page
     return get_result_page(job_id, page=0, page_size=50)
