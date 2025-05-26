@@ -426,30 +426,6 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
 
     return results
 
-    """
-    feeds = newsapi_result.json().get("articles", [])
-    titles = [feed["title"] for feed in feeds]
-
-    sentiment_predictions = analyzer_hun.pipeline(titles)
-
-    results: List[dict] = []
-    for feed, prediction in zip(feeds, sentiment_predictions):
-        sentiments = {
-            LABEL_MAPPING_ROBERTA[item["label"]]: round(item["score"], 4)
-            for item in prediction
-        }
-        results.append(
-            {
-                "title": feed["title"],
-                "source": feed["source"]["name"],
-                "published": feed["publishedAt"],
-                "sentiments": Sentiments(**sentiments).asdict(),
-            }
-        )
-
-    return results
-    """
-
 
 def analyze_with_details_sync(feeds: list, lang: str) -> List[dict]:
     """
@@ -475,11 +451,3 @@ def analyze_with_details_sync(feeds: list, lang: str) -> List[dict]:
         )
 
     return results
-
-
-async def async_analyze_text(lang: str, text: str):
-    analyzer = SentimentAnalyzerFactory.get_analyzer(lang)
-
-    from fastapi.concurrency import run_in_threadpool
-
-    return await run_in_threadpool(analyzer.analyze_text, text)
