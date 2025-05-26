@@ -1,5 +1,5 @@
 """
-project configuration
+project configuration this is for DEV. TESTING
 """
 
 import os
