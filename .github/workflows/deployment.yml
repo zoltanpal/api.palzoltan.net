@@ -36,8 +36,63 @@ jobs:
 
             if [ "$ENV" == "prod" ]; then
               echo "Deploying to production..."
+              cd /var/www/sandbox/prod
+              # navigate to the work directory
+              # cd ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
             else
               echo "Deploying to development..."
+              cd /var/www/sandbox/dev
+              # cd ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
             fi
+
+            # Clone repo if missing
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/zoltanpal/api.palzoltan.net.git .
+              git checkout ${{ github.ref_name }}
+            fi
+
+            # Fetch latest changes
+            git fetch origin
+
+            # Hard reset to match the latest remote state
+            git reset --hard origin/${{ github.ref_name }}
+            git clean -fd  # Remove untracked files
+
+            git checkout ${{ github.ref_name }}
+
+            # Set up Python & Poetry
+            export POETRY_HOME=$HOME/.poetry
+            export PATH="$POETRY_HOME/bin:$HOME/.local/bin:$PATH"
+
+            # Install Poetry if not available
+            if ! command -v poetry &> /dev/null; then
+              curl -sSL https://install.python-poetry.org | python3 -
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
+
+            # Ensure Poetry uses in-project virtual environments
+            poetry config virtualenvs.in-project true
+
+            # Clear Poetry cache (optional but useful if hashes mismatch)
+            poetry cache clear pypi --all
+
+            # Remove old lock file and regenerate
+            rm -f poetry.lock
+            poetry lock
+
+            # Install dependencies (including the project itself)
+            poetry install
+
+            if [ "$ENV" == "prod" ]; then
+              echo "Starting the production API service ..."
+              # sudo systemctl restart api.palzoltan.net.service
+              # sudo systemctl status api.palzoltan.net.service
+            else
+              echo "Starting the development API service ..."
+              # sudo systemctl restart devapi.palzoltan.net.service
+              # sudo systemctl status devapi.palzoltan.net.service
+            fi
+
+
             
 
