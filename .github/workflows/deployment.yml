@@ -37,11 +37,13 @@ jobs:
             if [ "$ENV" == "prod" ]; then
               echo "Deploying to production..."
               cd /var/www/sandbox/prod
+              echo ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
               # navigate to the work directory
               # cd ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
             else
               echo "Deploying to development..."
               cd /var/www/sandbox/dev
+              echo ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
               # cd ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
             fi
 
