@@ -81,6 +81,8 @@ jobs:
             # Install dependencies (including the project itself)
             poetry install
 
+            bash setup_env.sh $ENV
+
             if [ "$ENV" == "prod" ]; then
               echo "Starting the production API service ..."
               # sudo systemctl restart api.palzoltan.net.service
