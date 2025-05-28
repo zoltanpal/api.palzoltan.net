@@ -33,13 +33,16 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             ENV=${{ github.event.inputs.environment }}
+            
 
             # navigate to the work directory
             if [ "$ENV" == "prod" ]; then
               echo "Deploying to production..."
+              WORK_DIR=${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
               cd ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
             else
               echo "Deploying to development..."
+              WORK_DIR=${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
               cd ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
             fi
 
@@ -81,7 +84,7 @@ jobs:
             # Install dependencies (including the project itself)
             poetry install
 
-            bash setup_env.sh $ENV
+            bash setup_env.sh $WORK_DIR
 
             if [ "$ENV" == "prod" ]; then
               echo "Starting the production API service ..."
