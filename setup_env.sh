@@ -10,11 +10,9 @@ if [ "$ENV" != "dev" ] && [ "$ENV" != "prod" ]; then
 fi
 
 if [ "$ENV" == "prod" ]; then
-  PROJECT_DIR="/var/www/api.palzoltan.net"
-  SERVICE_NAME="api.palzoltan.net.service"
+  PROJECT_DIR="/var/www/sandbox/prod"
 else
-  PROJECT_DIR="/var/www/devapi.palzoltan.net"
-  SERVICE_NAME="devapi.palzoltan.net.service"
+  PROJECT_DIR="/var/www/sandbox/dev"
 fi
 
 VENV="$PROJECT_DIR/.venv"
@@ -45,9 +43,5 @@ sudo -u www-data bash -c "
   export TRANSFORMERS_CACHE='$TRANSFORMERS_CACHE' && \
   python -c \"from transformers import AutoModel; AutoModel.from_pretrained('NYTK/sentiment-hts5-xlm-roberta-hungarian')\"
 "
-
-# Restart systemd service
-echo "▶ Restarting service: $SERVICE_NAME"
-sudo systemctl restart "$SERVICE_NAME"
 
 echo "✅ Setup completed for $ENV"
