@@ -35,7 +35,7 @@ echo "▶ Downloading NLTK resources..."
 sudo -u www-data bash -c "
   source '$VENV/bin/activate' && \
   export NLTK_DATA='$NLTK_DATA' && \
-  python -c \"import nltk; nltk.download('stopwords'); nltk.download('punkt')\"
+  python -c \"import nltk; nltk.download('stopwords'); nltk.download('vader_lexicon'); nltk.download('punkt')\"
 "
 
 # Download Hugging Face model
