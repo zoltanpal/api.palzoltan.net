@@ -2,24 +2,24 @@
 
 set -e
 
-ENV="$1"
+PROJECT_DIR="$1"
 
-if [ "$ENV" != "dev" ] && [ "$ENV" != "prod" ]; then
-  echo "❌ Usage: $0 [dev|prod]"
-  exit 1
-fi
+#if [ "$ENV" != "dev" ] && [ "$ENV" != "prod" ]; then
+#  echo "❌ Usage: $0 [dev|prod]"
+#  exit 1
+#fi
 
-if [ "$ENV" == "prod" ]; then
-  PROJECT_DIR="/var/www/sandbox/prod"
-else
-  PROJECT_DIR="/var/www/sandbox/dev"
-fi
+#if [ "$ENV" == "prod" ]; then
+#  PROJECT_DIR="/var/www/sandbox/prod"
+#else
+#  PROJECT_DIR="/var/www/sandbox/dev"
+#fi
 
 VENV="$PROJECT_DIR/.venv"
 NLTK_DATA="$PROJECT_DIR/nltk_data"
 TRANSFORMERS_CACHE="$PROJECT_DIR/.cache"
 
-echo "▶ Preparing environment: $ENV"
+#echo "▶ Preparing environment: $ENV"
 echo "▶ Project directory: $PROJECT_DIR"
 echo "▶ Service: $SERVICE_NAME"
 
@@ -44,4 +44,4 @@ sudo -u www-data bash -c "
   python -c \"from transformers import AutoModel; AutoModel.from_pretrained('NYTK/sentiment-hts5-xlm-roberta-hungarian')\"
 "
 
-echo "✅ Setup completed for $ENV"
+echo "✅ Setup completed"
