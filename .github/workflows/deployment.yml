@@ -33,7 +33,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             ENV=${{ github.event.inputs.environment }}
-            
+
 
             # navigate to the work directory
             if [ "$ENV" == "prod" ]; then
@@ -84,7 +84,8 @@ jobs:
             # Install dependencies (including the project itself)
             poetry install
 
-            bash setup_env.sh $WORK_DIR
+            # Download the language models
+            bash download_language_models.sh $WORK_DIR
 
             if [ "$ENV" == "prod" ]; then
               echo "Starting the production API service ..."
@@ -95,7 +96,3 @@ jobs:
               # sudo systemctl restart devapi.palzoltan.net.service
               # sudo systemctl status devapi.palzoltan.net.service
             fi
-
-
-            
-
