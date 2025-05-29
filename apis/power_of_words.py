@@ -1,16 +1,29 @@
+import asyncio
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from http import HTTPStatus
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+import httpx
+
+# import requests  # type: ignore
+from fastapi import APIRouter, Depends, HTTPException, Query
 from nltk.corpus import stopwords
 from palzlib.database.db_client import DBClient
 from palzlib.database.db_mapper import DBMapper
+from palzlib.sentiment_analyzers.factory.sentiment_factory import (
+    SentimentAnalyzerFactory,
+)
+from palzlib.sentiment_analyzers.models.sentiments import (
+    LABEL_MAPPING_ROBERTA,
+    Sentiments,
+)
 from sqlalchemy import and_, asc, case, func, or_, select, text
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
+import config
 from config import pow_db_config
 from libs.auth.bearer_token import BearerAuth
 from libs.functions import generate_sentiment_by_source_series, to_dict
@@ -315,3 +328,126 @@ async def bias_detection(
 
     rows = result.mappings().fetchall()
     return rows
+
+
+@router.get("/correlation_between_sources")
+async def correlation_between_sources(
+    start_date: str,
+    end_date: str,
+    words: List[str] = Query(None),
+    db: Session = Depends(db_client.get_session),
+):
+
+    sql = text(
+        """
+        SELECT
+            word,
+            s.name as sourcename,
+            min(fs.sentiment_compound) AS min_compound,
+            max(fs.sentiment_compound) AS max_compound,
+            AVG(fs.sentiment_compound) AS avg_compound,
+            -- Positive Sentiments
+            sum(CASE WHEN fs.sentiment_key = 'positive' THEN 1 ELSE 0 END) AS nm_of_positive,
+            MAX(CASE WHEN fs.sentiment_key = 'positive' THEN sentiment_value END) AS max_positive,
+            MIN(CASE WHEN fs.sentiment_key = 'positive' THEN sentiment_value END) AS min_positive,
+            AVG(CASE WHEN fs.sentiment_key = 'positive' THEN sentiment_value END) AS avg_positive,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN fs.sentiment_key = 'positive'
+                THEN sentiment_value END) AS median_positive,
+            -- Negative Sentiments
+            sum(CASE WHEN fs.sentiment_key = 'negative' THEN 1 ELSE 0 END) AS nm_of_negative,
+            MAX(CASE WHEN fs.sentiment_key = 'negative' THEN sentiment_value END) AS max_negative,
+            MIN(CASE WHEN fs.sentiment_key = 'negative' THEN sentiment_value END) AS min_negative,
+            AVG(CASE WHEN fs.sentiment_key = 'negative' THEN sentiment_value END) AS avg_negative,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN fs.sentiment_key = 'negative'
+                THEN sentiment_value END) AS median_negative,
+            -- Neutral Sentiments
+            sum(CASE WHEN fs.sentiment_key = 'neutral' THEN 1 ELSE 0 END) AS nm_of_neutral,
+            MAX(CASE WHEN fs.sentiment_key = 'neutral' THEN sentiment_value END) AS max_neutral,
+            MIN(CASE WHEN fs.sentiment_key = 'neutral' THEN sentiment_value END) AS min_neutral,
+            AVG(CASE WHEN fs.sentiment_key = 'neutral' THEN sentiment_value END) AS avg_neutral,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN fs.sentiment_key = 'neutral'
+                THEN sentiment_value END) AS median_neutral
+        FROM feeds AS f
+        LEFT JOIN feed_sentiments AS fs ON f.id = fs.feed_id
+        LEFT JOIN sources AS s ON f.source_id = s.id
+        LEFT JOIN LATERAL unnest(string_to_array(:words_array, ',')) AS word ON true
+        WHERE f.search_vector @@ to_tsquery('hungarian', :tsquery)
+        AND f.published BETWEEN :start_date AND :end_date
+        GROUP BY word, s.name
+        ORDER BY word, s.name;
+    """
+    )
+
+    result = db.execute(
+        sql,
+        {
+            "start_date": f"{start_date} 00:00:00",
+            "end_date": f"{end_date} 23:59:59",
+            "words_array": ",".join(words),
+            "tsquery": " | ".join(words),
+        },
+    )
+
+    rows = result.mappings().fetchall()
+    return rows
+
+
+# analyzer_hun = SentimentAnalyzerFactory.get_analyzer("hun")
+executor = ThreadPoolExecutor(max_workers=4)
+
+
+@router.get("/ondemand_feed_analyse")
+async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
+    if not word:
+        raise HTTPException(status_code=404, detail="Word parameter is required")
+
+    url = (
+        f"https://newsapi.org/v2/everything?q={word}"
+        f"&from={start_date}&sortBy=publishedAt"
+        f"&apiKey={config.NEWS_API_KEY}&searchIn=title"
+        f"&language={lang}"
+    )
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        newsapi_result = await client.get(url)
+
+    if newsapi_result.status_code != 200:
+        raise HTTPException(
+            status_code=newsapi_result.status_code, detail=newsapi_result.text
+        )
+
+    feeds = newsapi_result.json().get("articles", [])
+
+    # Use executor to run sentiment analysis in a background thread
+    loop = asyncio.get_event_loop()
+    results = await loop.run_in_executor(
+        executor, analyze_with_details_sync, feeds, "hun"
+    )
+
+    return results
+
+
+def analyze_with_details_sync(feeds: list, lang: str) -> List[dict]:
+    """
+    Synchronously analyzes sentiment for a list of feeds and returns results with metadata.
+    """
+    analyzer = SentimentAnalyzerFactory.get_analyzer(lang)
+    titles = [feed["title"] for feed in feeds]
+    predictions = analyzer.pipeline(titles)
+
+    results = []
+    for feed, prediction in zip(feeds, predictions):
+        sentiments = {
+            LABEL_MAPPING_ROBERTA[item["label"]]: round(item["score"], 4)
+            for item in prediction
+        }
+        results.append(
+            {
+                "title": feed["title"],
+                "source": feed["source"]["name"],
+                "published": feed["publishedAt"],
+                "sentiments": Sentiments(**sentiments).asdict(),
+            }
+        )
+
+    return results
