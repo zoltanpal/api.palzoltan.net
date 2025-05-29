@@ -1,5 +1,5 @@
 """
-project configuration
+project configuration this is for DEV. TESTING
 """
 
 import os
@@ -38,6 +38,7 @@ WEBUI_USER = os.getenv("WEBUI_USER", default="").split(":")
 AUTH_TOKEN = os.getenv("AUTH_TOKEN", default="")
 
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY")
+NEWS_API_KEY = os.getenv("NEWS_API_KEY", default="")
 
 
 # Database Configuration
