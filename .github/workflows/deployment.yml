@@ -89,10 +89,10 @@ jobs:
 
             if [ "$ENV" == "prod" ]; then
               echo "Starting the production API service ..."
-              # sudo systemctl restart api.palzoltan.net.service
-              # sudo systemctl status api.palzoltan.net.service
+              sudo systemctl restart api.palzoltan.net.service
+              sudo systemctl status api.palzoltan.net.service
             else
               echo "Starting the development API service ..."
-              # sudo systemctl restart devapi.palzoltan.net.service
-              # sudo systemctl status devapi.palzoltan.net.service
+              sudo systemctl restart devapi.palzoltan.net.service
+              sudo systemctl status devapi.palzoltan.net.service
             fi
