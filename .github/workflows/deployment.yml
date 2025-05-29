@@ -2,6 +2,15 @@ name: Deploy API to Server
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select environment to deploy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
 
 jobs:
   deploy:
@@ -23,28 +32,19 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            # Find and kill the running uvicorn process
-            # pgrep -f "uvicorn main:app" | xargs -r kill || true
+            ENV=${{ github.event.inputs.environment }}
 
-            # Find uvicorn process
-            UVICORN_PID=$(pgrep -f "uvicorn main:app" | sort -n | head -n 1)
-
-            if [ -n "$UVICORN_PID" ]; then
-              echo "Stopping FastAPI (PID: $UVICORN_PID)..."
-              kill "$UVICORN_PID"
-              sleep 2  # Allow process to exit
-
-              # Ensure it's fully stopped
-              if pgrep -f "uvicorn main:app" | grep -q "$UVICORN_PID"; then
-                echo "Process still running, force killing..."
-                kill -9 "$UVICORN_PID"
-              fi
-            else
-              echo "No running FastAPI process found."
-            fi
 
             # navigate to the work directory
-            cd ${{ secrets.SERVER_DEPLOYMENT_PATH }}
+            if [ "$ENV" == "prod" ]; then
+              echo "Deploying to production..."
+              WORK_DIR=${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
+              cd ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
+            else
+              echo "Deploying to development..."
+              WORK_DIR=${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
+              cd ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
+            fi
 
             # Clone repo if missing
             if [ ! -d ".git" ]; then
@@ -84,8 +84,15 @@ jobs:
             # Install dependencies (including the project itself)
             poetry install
 
-            # Start the API
-            nohup poetry run python -m uvicorn main:app > fastapi.log 2>&1 &
+            # Download the language models
+            bash download_language_models.sh $WORK_DIR
 
-            # Confirm the process is running
-            pgrep -f "uvicorn main:app" || echo "Failed to start FastAPI"
+            if [ "$ENV" == "prod" ]; then
+              echo "Starting the production API service ..."
+              sudo systemctl restart api.palzoltan.net.service
+              sudo systemctl status api.palzoltan.net.service
+            else
+              echo "Starting the development API service ..."
+              sudo systemctl restart devapi.palzoltan.net.service
+              sudo systemctl status devapi.palzoltan.net.service
+            fi
