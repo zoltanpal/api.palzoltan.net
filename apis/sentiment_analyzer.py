@@ -31,6 +31,7 @@ class InputData(BaseModel):
     lang: str
     text: str
 
+# Storing the jobs' results of the text sentiment analysis
 JOB_RESULTS: Dict[str, Dict] = {}
 
 @router.get("/start_analysis")
