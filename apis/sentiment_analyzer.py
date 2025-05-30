@@ -1,11 +1,9 @@
 from http import HTTPStatus
 from typing import Dict, List
-
-from fastapi import BackgroundTasks
 from uuid import uuid4
-import httpx
 
-from fastapi import APIRouter, Depends, HTTPException
+import httpx
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from palzlib.sentiment_analyzers.factory.sentiment_factory import (
     SentimentAnalyzerFactory,
 )
@@ -23,19 +21,27 @@ router = APIRouter(
 
 
 class InputData(BaseModel):
-    """ Schema for input data used in sentiment analysis.
+    """Schema for input data used in sentiment analysis.
 
     Defines the input data required for text analysis,
     including the language and the text itself.
     """
+
     lang: str
     text: str
+
 
 # Storing the jobs' results of the text sentiment analysis
 JOB_RESULTS: Dict[str, Dict] = {}
 
+
 @router.get("/start_analysis")
-async def start_analysis(start_date: str, word: str, lang: str = "hu", background_tasks: BackgroundTasks = None):
+async def start_analysis(
+    start_date: str,
+    word: str,
+    lang: str = "hu",
+    background_tasks: BackgroundTasks = None,
+):
     """
     Starts sentiment analysis on articles fetched from NewsAPI for a given word and language.
     Returns the first page of results while continuing analysis in the background.
@@ -95,12 +101,12 @@ def background_chunked_analysis(job_id: str, lang: str = "hun"):
     chunk_size = 50
 
     for i in range(0, len(feeds), chunk_size):
-        titles = [f["title"] for f in feeds[i:i + chunk_size]]
+        titles = [f["title"] for f in feeds[i : i + chunk_size]]
         sentiments_list = analyzer.analyze_batch(titles)
-
         for j, sentiment_obj in enumerate(sentiments_list):
             JOB_RESULTS[job_id]["results"][i + j] = sentiment_obj.asdict()
             JOB_RESULTS[job_id]["completed"] += 1
+
 
 @router.get("/results/{job_id}")
 def get_result_page(job_id: str, page: int = 0, page_size: int = 50):
@@ -126,12 +132,14 @@ def get_result_page(job_id: str, page: int = 0, page_size: int = 50):
     for i in range(start, min(end, len(job["feeds"]))):
         feed = job["feeds"][i]
         sentiments = job["results"][i]
-        page_data.append({
-            "title": feed["title"],
-            "source": feed.get("source", {}).get("name"),
-            "published": feed.get("publishedAt"),
-            "sentiments": sentiments  # Can be None if still processing
-        })
+        page_data.append(
+            {
+                "title": feed["title"],
+                "source": feed.get("source", {}).get("name"),
+                "published": feed.get("publishedAt"),
+                "sentiments": sentiments,  # Can be None if still processing
+            }
+        )
 
     return {
         "job_id": job_id,
@@ -139,7 +147,7 @@ def get_result_page(job_id: str, page: int = 0, page_size: int = 50):
         "page_size": page_size,
         "total": job["total"],
         "completed": job["completed"],
-        "results": page_data
+        "results": page_data,
     }
 
 
