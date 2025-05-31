@@ -2,15 +2,16 @@ from http import HTTPStatus
 from typing import Dict, List
 from uuid import uuid4
 
-import httpx
+# import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from gnews import GNews
 from palzlib.sentiment_analyzers.factory.sentiment_factory import (
     SentimentAnalyzerFactory,
 )
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
-from config import NEWS_API_KEY
+# from config import NEWS_API_KEY
 from libs.auth.bearer_token import BearerAuth
 
 router = APIRouter(
@@ -33,6 +34,30 @@ class InputData(BaseModel):
 
 # Storing the jobs' results of the text sentiment analysis
 JOB_RESULTS: Dict[str, Dict] = {}
+
+
+def get_google_news(
+    q: str, period: str = "7d", lang: str = "hu", country: str = "hu"
+) -> List[dict]:
+    google_news = GNews(
+        language=lang,
+        country=country,
+        period=period,
+    )
+
+    news = google_news.get_news(q)
+
+    feeds: List[dict] = []
+    for item in news:
+        source = item.get("publisher")["title"]
+        title = item.get("title")
+        if title.endswith(f" - {source}"):
+            title = title[: -len(f" - {source}")]
+        feeds.append(
+            {"title": title, "published": item.get("published date"), "source": source}
+        )
+
+    return feeds
 
 
 @router.get("/start_analysis")
@@ -58,6 +83,7 @@ async def start_analysis(
     if not word:
         raise HTTPException(status_code=404, detail="Word parameter is required")
 
+    """
     url = (
         f"https://newsapi.org/v2/everything?q={word}"
         f"&from={start_date}&sortBy=publishedAt"
@@ -69,6 +95,8 @@ async def start_analysis(
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.get(url)
     feeds = response.json().get("articles", [])
+    """
+    feeds = get_google_news(q=word, period="7d")
 
     # Initialize job and store feeds in a dict
     job_id = str(uuid4())
