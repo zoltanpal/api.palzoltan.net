@@ -96,7 +96,7 @@ async def start_analysis(
         response = await client.get(url)
     feeds = response.json().get("articles", [])
     """
-    feeds = get_google_news(q=word, period="7d")
+    feeds = get_google_news(q=word, period="7d", lang=lang)
 
     # Initialize job and store feeds in a dict
     job_id = str(uuid4())
