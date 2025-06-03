@@ -163,7 +163,7 @@ def get_result_page(job_id: str, page: int = 0, page_size: int = 50):
         page_data.append(
             {
                 "title": feed["title"],
-                "source": feed.get("source", {}).get("name"),
+                "source": feed.get("source"),
                 "published": feed.get("published"),
                 "sentiments": sentiments,  # Can be None if still processing
             }
