@@ -200,7 +200,7 @@ async def get_extreme_sentiments(
         select(
             Feeds.title,
             Sources.name.label("source"),
-            func.DATE(Feeds.published),
+            Feeds.published,
             FeedSentiments.sentiment_key,
             FeedSentiments.sentiment_value,
             FeedSentiments.sentiment_compound,
