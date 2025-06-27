@@ -330,6 +330,44 @@ async def bias_detection(
     return rows
 
 
+@router.get("/correlation_between_sources_avg_compound")
+async def correlation_between_sources_avg_compound(
+    start_date: str,
+    end_date: str,
+    words: List[str] = Query(None),
+    db: Session = Depends(db_client.get_session),
+):
+    sql = text(
+        """
+        SELECT
+            word,
+            s.name AS sourcename,
+            date_trunc('month', f.published)::date AS month,
+            AVG(fs.sentiment_compound) AS avg_compound
+        FROM feeds AS f
+        LEFT JOIN feed_sentiments AS fs ON f.id = fs.feed_id
+        LEFT JOIN sources AS s ON f.source_id = s.id
+        LEFT JOIN LATERAL unnest(string_to_array(:words_array, ',')) AS word ON true
+        WHERE f.search_vector @@ to_tsquery('hungarian', :tsquery)
+        AND f.published BETWEEN :start_date AND :end_date
+        GROUP BY word, s.name, month
+        ORDER BY word, s.name, month;
+        """
+    )
+
+    result = db.execute(
+        sql,
+        {
+            "start_date": f"{start_date} 00:00:00",
+            "end_date": f"{end_date} 23:59:59",
+            "words_array": ",".join(words),
+            "tsquery": " | ".join(words),
+        },
+    )
+
+    rows = result.mappings().fetchall()
+    return rows
+
 @router.get("/correlation_between_sources")
 async def correlation_between_sources(
     start_date: str,
