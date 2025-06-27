@@ -335,6 +335,7 @@ async def correlation_between_sources_avg_compound(
     start_date: str,
     end_date: str,
     words: List[str] = Query(None),
+    sources: List[str] = Query(None),
     db: Session = Depends(db_client.get_session),
 ):
     sql = text(
@@ -350,6 +351,7 @@ async def correlation_between_sources_avg_compound(
         LEFT JOIN LATERAL unnest(string_to_array(:words_array, ',')) AS word ON true
         WHERE f.search_vector @@ to_tsquery('hungarian', :tsquery)
         AND f.published BETWEEN :start_date AND :end_date
+        AND (:source_ids IS NULL OR f.source_id = ANY(:source_ids))
         GROUP BY word, s.name, month
         ORDER BY word, s.name, month;
         """
@@ -362,6 +364,7 @@ async def correlation_between_sources_avg_compound(
             "end_date": f"{end_date} 23:59:59",
             "words_array": ",".join(words),
             "tsquery": " | ".join(words),
+            "source_ids": sources if sources else None,
         },
     )
 
