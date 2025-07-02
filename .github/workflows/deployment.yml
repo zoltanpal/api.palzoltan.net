@@ -34,17 +34,23 @@ jobs:
           script: |
             ENV=${{ github.event.inputs.environment }}
 
-
             # navigate to the work directory
             if [ "$ENV" == "prod" ]; then
               echo "Deploying to production..."
               WORK_DIR=${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
               cd ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
+
+              git config --global --add safe.directory ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
+              
             else
               echo "Deploying to development..."
               WORK_DIR=${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
               cd ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
+
+              git config --global --add safe.directory ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
             fi
+
+            
 
             # Clone repo if missing
             if [ ! -d ".git" ]; then
