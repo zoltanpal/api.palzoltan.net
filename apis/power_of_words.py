@@ -341,19 +341,17 @@ async def correlation_between_sources_avg_compound(
     sql = text(
         """
         SELECT
-            word,
             s.name AS sourcename,
             date_trunc('month', f.published)::date AS month,
             AVG(fs.sentiment_compound) AS avg_compound
         FROM feeds AS f
         LEFT JOIN feed_sentiments AS fs ON f.id = fs.feed_id
         LEFT JOIN sources AS s ON f.source_id = s.id
-        LEFT JOIN LATERAL unnest(string_to_array(:words_array, ',')) AS word ON true
         WHERE f.search_vector @@ to_tsquery('hungarian', :tsquery)
         AND f.published BETWEEN :start_date AND :end_date
         AND (:source_ids IS NULL OR f.source_id = ANY(:source_ids))
-        GROUP BY word, s.name, month
-        ORDER BY word, s.name, month;
+        GROUP BY s.name, month
+        ORDER BY s.name, month;
         """
     )
 
