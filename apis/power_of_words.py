@@ -369,6 +369,7 @@ async def correlation_between_sources_avg_compound(
     rows = result.mappings().fetchall()
     return rows
 
+
 @router.get("/correlation_between_sources")
 async def correlation_between_sources(
     start_date: str,
@@ -433,6 +434,71 @@ async def correlation_between_sources(
 
 # analyzer_hun = SentimentAnalyzerFactory.get_analyzer("hun")
 executor = ThreadPoolExecutor(max_workers=4)
+
+
+@router.get("/word_co_occurences")
+async def word_co_occurences(
+    start_date: str,
+    end_date: str,
+    word: str,
+    sources: Optional[List[int]] = Query(None),
+    db: Session = Depends(db_client.get_session),
+):
+    if not word:
+        raise HTTPException(status_code=404, detail="Word parameter is required")
+
+    sql = text(
+        """
+            WITH target_articles AS (
+              SELECT f.id, f.words
+              FROM feeds f
+              WHERE :word = ANY(
+                SELECT w FROM unnest(f.words) AS w
+              )
+                AND f.published BETWEEN :start_date AND :end_date
+                AND (:source_ids IS NULL OR f.source_id = ANY(:source_ids))
+            ),
+            co_words AS (
+              SELECT ta.id AS feed_id, w AS co_word
+              FROM target_articles ta,
+                   unnest(ta.words) AS w
+              WHERE w <> :word
+            ),
+            sentiments AS (
+              SELECT feed_id,
+                     COUNT(*) FILTER (WHERE sentiment_key = 'positive') AS pos_count,
+                     COUNT(*) FILTER (WHERE sentiment_key = 'negative') AS neg_count,
+                     COUNT(*) FILTER (WHERE sentiment_key = 'neutral') AS neu_count
+              FROM feed_sentiments
+              GROUP BY feed_id
+            )
+            SELECT
+              cw.co_word,
+              COUNT(*) AS co_occurrence,
+              COALESCE(SUM(s.pos_count), 0) AS positive_count,
+              COALESCE(SUM(s.neg_count), 0) AS negative_count,
+              COALESCE(SUM(s.neu_count), 0) AS neutral_count
+            FROM co_words cw
+            LEFT JOIN sentiments s ON cw.feed_id = s.feed_id
+            GROUP BY cw.co_word
+            ORDER BY co_occurrence DESC
+            LIMIT 30;
+
+        """
+    )
+
+    result = db.execute(
+        sql,
+        {
+            "word": word,
+            "start_date": f"{start_date} 00:00:00",
+            "end_date": f"{end_date} 23:59:59",
+            "source_ids": sources if sources else None,
+        },
+    )
+
+    rows = result.mappings().fetchall()
+    return rows
 
 
 @router.get("/ondemand_feed_analyse")
