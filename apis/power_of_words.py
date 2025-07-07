@@ -481,6 +481,7 @@ async def word_co_occurences(
             FROM co_words cw
             LEFT JOIN sentiments s ON cw.feed_id = s.feed_id
             GROUP BY cw.co_word
+            HAVING COUNT(*) > 1
             ORDER BY co_occurrence DESC
             LIMIT 30;
 
