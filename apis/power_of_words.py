@@ -134,10 +134,10 @@ async def raw_data(
             {
                 "feed": to_dict(feed),
                 "feed_sentiments": to_dict(sentiment),
-                "feed_categories": to_dict(category),
                 "source": to_dict(source),
+                "feed_categories": to_dict(category),
             }
-            for feed, sentiment, category, source in results
+            for feed, sentiment, source, category in results
         ],
     }
 
