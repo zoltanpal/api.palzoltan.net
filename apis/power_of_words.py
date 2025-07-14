@@ -35,6 +35,7 @@ db_mapper = DBMapper(db_client=db_client)
 Feeds = db_mapper.get_model("feeds")
 FeedSentiments = db_mapper.get_model("feed_sentiments")
 Sources = db_mapper.get_model("sources")
+FeedCategories = db_mapper.get_model("feed_categories")
 
 router = APIRouter(
     prefix="/power_of_words",
@@ -91,6 +92,52 @@ async def feeds(
                 "source": to_dict(source),
             }
             for feed, sentiment, source in results
+        ],
+    }
+
+@router.get("/raw_data")
+async def raw_data(
+    sources: Optional[List[int]] = Query(None),
+    free_text: Optional[str] = Query(None),
+    category_id: Optional[List[int]] = Query(None),
+    page: int = 1,
+    items_per_page: int = 30,
+    db: Session = Depends(db_client.get_session),
+):
+    filters = FeedDBFilters(
+        sources=sources or [],
+        free_text=free_text or "",
+    )
+    filters.Feed = Feeds
+
+    query = (
+        db.query(Feeds, FeedSentiments, Sources, FeedCategories)
+        .join(
+            FeedSentiments,
+            and_(FeedSentiments.feed_id == Feeds.id, FeedSentiments.model_id == 1),
+        )
+        .join(Sources, Feeds.source_id == Sources.id)
+        .join(FeedCategories, Feeds.category_id == FeedCategories.id)
+        .filter(filters.conditions)
+        .order_by(Feeds.published.desc())
+    )
+
+    total_items = query.count()
+    results = db.execute(
+        query.limit(items_per_page).offset((page - 1) * items_per_page)
+    ).all()
+
+    return {
+        "total": total_items,
+        "page": page,
+        "feeds": [
+            {
+                "feed": to_dict(feed),
+                "feed_sentiments": to_dict(sentiment),
+                "feed_categories": to_dict(category),
+                "source": to_dict(source),
+            }
+            for feed, sentiment, category, source in results
         ],
     }
 
