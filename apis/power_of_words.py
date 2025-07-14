@@ -117,7 +117,7 @@ async def raw_data(
             and_(FeedSentiments.feed_id == Feeds.id, FeedSentiments.model_id == 1),
         )
         .join(Sources, Feeds.source_id == Sources.id)
-        .join(FeedCategories, Feeds.category_id == FeedCategories.id)
+        .join(FeedCategories, Feeds.category_id == FeedCategories.id, isouter=True)
         .filter(filters.conditions)
         .order_by(Feeds.published.desc())
     )
