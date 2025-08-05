@@ -1,5 +1,4 @@
 import asyncio
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from http import HTTPStatus
@@ -138,14 +137,29 @@ async def most_common_words(
     nm_common: int = 20,
     db: Session = Depends(db_client.get_session),
 ):
-    cursor_result = db.query(Feeds.words).filter(
-        Feeds.feed_date.between(start_date, end_date)
-    )
-    words: List[str] = []
-    for row_words in list(cursor_result):
-        words.extend(word for word in row_words[0] if word not in STOPWORDS)
 
-    return Counter(words).most_common(nm_common)
+    STOPWORDS_SQL = tuple(STOPWORDS)  # Python stopwords -> SQL IN tuple
+    query = db.execute(
+        text(
+            """
+            SELECT word, COUNT(*) as freq
+            FROM feeds, unnest(words) as word
+            WHERE feed_date BETWEEN :start AND :end
+            AND word NOT IN :stopwords
+            GROUP BY word
+            ORDER BY freq DESC
+            LIMIT :limit
+        """
+        ),
+        {
+            "start": start_date,
+            "end": end_date,
+            "stopwords": STOPWORDS_SQL,
+            "limit": nm_common,
+        },
+    )
+
+    return query.fetchall()
 
 
 @router.get("/count_sentiments", status_code=HTTPStatus.OK)
