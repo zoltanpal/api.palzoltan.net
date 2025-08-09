@@ -31,7 +31,7 @@ from models.feed_db_filters import FeedDBFilters
 
 db_client = DBClient(db_config=pow_db_config)
 db_mapper = DBMapper(db_client=db_client)
-Feeds = db_mapper.get_model("feeds")
+Feeds = db_mapper.get_model("feeds_partitioned")
 FeedSentiments = db_mapper.get_model("feed_sentiments")
 Sources = db_mapper.get_model("sources")
 
@@ -138,7 +138,10 @@ async def most_common_words(
     db: Session = Depends(db_client.get_session),
 ):
 
-    STOPWORDS_SQL = tuple(STOPWORDS)  # Python stopwords -> SQL IN tuple
+    STOPWORDS_SQL = tuple(STOPWORDS)
+
+    print(STOPWORDS_SQL)
+
     query = db.execute(
         text(
             """
@@ -158,8 +161,8 @@ async def most_common_words(
             "limit": nm_common,
         },
     )
-
-    return query.fetchall()
+    print(query)
+    # return query.fetchall()
 
 
 @router.get("/count_sentiments", status_code=HTTPStatus.OK)
