@@ -1,7 +1,7 @@
 import asyncio
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
+from datetime import date, timedelta
 from http import HTTPStatus
 from typing import List, Optional
 
@@ -32,7 +32,7 @@ from models.feed_db_filters import FeedDBFilters
 
 db_client = DBClient(db_config=pow_db_config)
 db_mapper = DBMapper(db_client=db_client)
-Feeds = db_mapper.get_model("feeds")
+Feeds = db_mapper.get_model("feeds_partitioned")
 FeedSentiments = db_mapper.get_model("feed_sentiments")
 Sources = db_mapper.get_model("sources")
 
@@ -150,37 +150,33 @@ async def most_common_words(
 
 @router.get("/count_sentiments", status_code=HTTPStatus.OK)
 async def count_sentiments(
-    start_date: str, end_date: str, db: Session = Depends(db_client.get_session)
+    start_date: date = Query(..., description="YYYY-MM-DD"),
+    end_date: date   = Query(..., description="YYYY-MM-DD"),
+    model_id: int = 1,
+    db: Session = Depends(db_client.get_session),
 ):
-    query = (
+    # half-open range: [start_date, end_date+1) — good for indexes/partition pruning
+    end_next = end_date + timedelta(days=1)
+
+    q = (
         db.query(
-            func.sum(
-                case((FeedSentiments.sentiment_key == "positive", 1), else_=0)
-            ).label("positive_sentiments"),
-            func.sum(
-                case((FeedSentiments.sentiment_key == "negative", 1), else_=0)
-            ).label("negative_sentiments"),
-            func.sum(
-                case((FeedSentiments.sentiment_key == "neutral", 1), else_=0)
-            ).label("neutral_sentiments"),
+            func.sum(case((FeedSentiments.sentiment_key == "positive", 1), else_=0)).label("pos"),
+            func.sum(case((FeedSentiments.sentiment_key == "negative", 1), else_=0)).label("neg"),
+            func.sum(case((FeedSentiments.sentiment_key == "neutral",  1), else_=0)).label("neu"),
         )
-        .join(Feeds, FeedSentiments.feed_id == Feeds.id)
         .filter(
-            FeedSentiments.model_id == 1, Feeds.feed_date.between(start_date, end_date)
+            FeedSentiments.model_id == model_id,
+            FeedSentiments.feed_date >= start_date,
+            FeedSentiments.feed_date <  end_next,
         )
     )
 
-    result = query.one()
-
-    if result is None:
-        JSONResponse(status_code=404, content=responses[404])
-
+    res = q.one()  # returns a Row with pos/neg/neu (can be None)
     return {
-        "positive_sentiments": result.positive_sentiments or 0,
-        "negative_sentiments": result.negative_sentiments or 0,
-        "neutral_sentiments": result.neutral_sentiments or 0,
+        "positive_sentiments": res.pos or 0,
+        "negative_sentiments": res.neg or 0,
+        "neutral_sentiments":  res.neu or 0,
     }
-
 
 @router.get("/extreme_sentiments")
 async def get_extreme_sentiments(
