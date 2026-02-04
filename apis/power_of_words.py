@@ -533,6 +533,18 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
     return results
 
 
+@router.get('/sources')
+async def get_sources(db: Session = Depends(db_client.get_session)):
+    result = db.execute(
+        "SELECT * FROM sources;",
+        {},
+    )
+
+    rows = result.mappings().fetchall()
+    return rows
+
+
+
 def analyze_with_details_sync(feeds: list, lang: str) -> List[dict]:
     """
     Synchronously analyzes sentiment for a list of feeds and returns results with metadata.
