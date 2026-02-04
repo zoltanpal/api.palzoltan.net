@@ -536,7 +536,7 @@ async def ondemand_feed_analyse(start_date: str, word: str, lang: str = "hu"):
 @router.get('/sources')
 async def get_sources(db: Session = Depends(db_client.get_session)):
     result = db.execute(
-        "SELECT * FROM sources;",
+        text("SELECT * FROM sources;"),
         {},
     )
 
