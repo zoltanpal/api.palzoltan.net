@@ -55,4 +55,4 @@ def get_db_config(db_name: str) -> DBConfig:
 
 psql_config = get_db_config(os.getenv("DB_NAME", "postgres"))
 time_travelers_db_config = get_db_config("time_travellers")
-pow_db_config = get_db_config("power_of_words")
+pow_db_config = get_db_config("power_of_words_v2")
