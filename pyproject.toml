@@ -1,0 +1,46 @@
+[project]
+name = "api-palzoltan-net"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.13"
+
+dependencies = [
+  "fastapi",
+  "pydantic",
+  "palzlib-db",
+  "sentiment-analyzer",
+  "python-dotenv>=1.2.1",
+  "requests>=2.32.5",
+  "uvicorn>=0.40.0",
+  "pyjwt>=2.11.0",
+  "python-multipart>=0.0.22",
+  "vulture>=2.14",
+  "feedparser>=6.0.12",
+  "openai>=2.29.0",
+]
+
+[dependency-groups]
+dev = [
+  "ruff",
+  "pytest>=9.0.2",
+  "pytest-cov",
+  "mypy"
+]
+
+[tool.uv.sources]
+palzlib-db = { path = "../libs/palzlib_db/dist/palzlib_db-0.1.2-py3-none-any.whl" }
+sentiment-analyzer = { path = "../libs/sentiment_analyzer/dist/sentiment_analyzer-1.1.5-py3-none-any.whl" }
+
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
