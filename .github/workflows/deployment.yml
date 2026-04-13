@@ -53,19 +53,18 @@ jobs:
               git checkout ${{ github.ref_name }}
             fi
 
-            # Fetch latest changes
+            # Fetch and reset to remote branch
             git fetch origin
 
-            # Hard reset to match the latest remote state
+            # Discard all local changes but keep .env
             git reset --hard origin/${{ github.ref_name }}
-            git clean -fd  # Remove untracked files
+            git clean -fdx -e .env
 
-            git checkout ${{ github.ref_name }}
+            # Make sure we are on the right branch
+            git checkout -B ${{ github.ref_name }} origin/${{ github.ref_name }}
 
-            
-
-            # Download the language models
-            bash download_language_models.sh $WORK_DIR
+            # # Download the language models
+            # bash download_language_models.sh $WORK_DIR
 
             if [ "$ENV" == "prod" ]; then
               echo "Starting the production API service ..."
