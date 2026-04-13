@@ -96,7 +96,15 @@ jobs:
             echo "Restarting service..."
             sudo systemctl restart "$SERVICE_NAME"
 
-            echo "Checking service health..."
-            sudo systemctl is-active --quiet "$SERVICE_NAME"
+            echo "Checking service status..."
+            if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+              echo "Service failed to start: $SERVICE_NAME"
+              echo "----- systemctl status -----"
+              sudo systemctl status "$SERVICE_NAME" --no-pager -l || true
+              echo "----- journalctl -----"
+              sudo journalctl -u "$SERVICE_NAME" -n 100 --no-pager || true
+              exit 1
+            fi
 
+            echo "Service is active."
             echo "Deployment finished successfully."
