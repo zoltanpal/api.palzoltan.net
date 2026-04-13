@@ -4,13 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Select environment to deploy'
+        description: "Select environment to deploy"
         required: true
-        default: 'dev'
+        default: dev
         type: choice
         options:
           - dev
           - prod
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -20,58 +24,79 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-
-      - name: Deploy to the Server
+      - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          REPO_URL: https://github.com/zoltanpal/api.palzoltan.net.git
+          DEV_PATH: ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
+          PROD_PATH: ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: ENVIRONMENT,BRANCH_NAME,REPO_URL,DEV_PATH,PROD_PATH
+          script_stop: true
           script: |
-            ENV=${{ github.event.inputs.environment }}
+            set -Eeuo pipefail
 
-            # navigate to the work directory
-            if [ "$ENV" == "prod" ]; then
+            if [ "$ENVIRONMENT" = "prod" ]; then
               echo "Deploying to production..."
-              WORK_DIR=${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
-              cd ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
-              git config --global --add safe.directory ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
+              WORK_DIR="$PROD_PATH"
+              SERVICE_NAME="api.palzoltan.net.service"
             else
               echo "Deploying to development..."
-              WORK_DIR=${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
-              cd ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
-              git config --global --add safe.directory ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
+              WORK_DIR="$DEV_PATH"
+              SERVICE_NAME="devapi.palzoltan.net.service"
             fi
 
-            # Clone repo if missing
+            echo "Work dir: $WORK_DIR"
+            echo "Branch: $BRANCH_NAME"
+            echo "Service: $SERVICE_NAME"
+
+            mkdir -p "$WORK_DIR"
+            cd "$WORK_DIR"
+
+            git config --global --add safe.directory "$WORK_DIR"
+
             if [ ! -d ".git" ]; then
-              git clone https://github.com/zoltanpal/api.palzoltan.net.git .
-              git checkout ${{ github.ref_name }}
+              echo "Git repo not found, cloning..."
+              git clone "$REPO_URL" .
             fi
 
-            # Fetch and reset to remote branch
-            git fetch origin
+            echo "Fetching latest code..."
+            git fetch --prune origin
 
-            # Discard all local changes but keep .env
-            git reset --hard origin/${{ github.ref_name }}
-            git clean -fdx -e .env
-
-            # Make sure we are on the right branch
-            git checkout -B ${{ github.ref_name }} origin/${{ github.ref_name }}
-
-            # # Download the language models
-            # bash download_language_models.sh $WORK_DIR
-
-            if [ "$ENV" == "prod" ]; then
-              echo "Starting the production API service ..."
-              sudo systemctl restart api.palzoltan.net.service
-              sudo systemctl status api.palzoltan.net.service
+            if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+              git checkout "$BRANCH_NAME"
             else
-              echo "Starting the development API service ..."
-              sudo systemctl restart devapi.palzoltan.net.service
-              sudo systemctl status devapi.palzoltan.net.service
+              git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
             fi
+
+            echo "Resetting working tree..."
+            git reset --hard "origin/$BRANCH_NAME"
+
+            # Keep deployment-specific files/folders
+            git clean -fd \
+              -e .env \
+              -e .venv
+
+            if [ ! -d ".venv" ]; then
+              echo ".venv not found, creating with uv..."
+              uv venv
+            fi
+
+            echo "Syncing dependencies with uv..."
+            uv sync --frozen
+
+            # Optional: run migrations or other deployment tasks here
+            # .venv/bin/alembic upgrade head
+
+            echo "Restarting service..."
+            sudo systemctl restart "$SERVICE_NAME"
+
+            echo "Checking service health..."
+            sudo systemctl is-active --quiet "$SERVICE_NAME"
+
+            echo "Deployment finished successfully."
