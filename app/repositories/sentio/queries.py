@@ -151,3 +151,18 @@ SENTIMENT_SCORES_PER_HOUR_QUERY = text(
     ORDER BY b.bucket_start ASC;
     """
 )
+
+DETAILED_SOURCES = text(
+    """
+    SELECT 
+        s.name, 
+        s.site_url, 
+        s.category, 
+        count(a.id) as current_articles_count
+    FROM sources AS s
+    LEFT JOIN articles AS a ON s.id=a.source_id
+    WHERE s.is_active=True AND s.broken_rss_link=False
+    GROUP BY s.name, s.site_url, s.category 
+    ORDER BY s.name ASC;
+    """
+)
