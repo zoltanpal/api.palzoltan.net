@@ -17,6 +17,12 @@ router = APIRouter(
     # dependencies=[Depends(BearerAuth())],
 )
 
+@router.get(
+    "/detailed_sources",
+    status_code=HTTPStatus.OK
+)
+async def detalied_sources_list():
+    pass
 
 @router.post(
     "/live/parse_prompt",
