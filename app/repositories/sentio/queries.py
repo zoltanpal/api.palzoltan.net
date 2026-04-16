@@ -158,7 +158,7 @@ DETAILED_SOURCES = text(
         s.name, 
         s.site_url, 
         s.category, 
-        count(a.id) as current_articles_count
+        count(a.id) as current_article_count
     FROM sources AS s
     LEFT JOIN articles AS a ON s.id=a.source_id
     WHERE s.is_active=True AND s.broken_rss_link=False

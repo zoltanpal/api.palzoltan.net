@@ -3,6 +3,7 @@ from http import HTTPStatus
 from fastapi import APIRouter, HTTPException
 
 from app.models.sentio import (
+    DetailedSourcesResponse,
     LiveQueryResponse,
     PromptRequest,
     PromptResponse,
@@ -10,6 +11,7 @@ from app.models.sentio import (
 )
 from app.services.sentio.analytics import build_live_query_response
 from app.services.sentio.query_parser import parse_user_query_with_ai
+from app.repositories.sentio.repository import sentio_repository
 
 router = APIRouter(
     prefix="/sentio",
@@ -19,10 +21,11 @@ router = APIRouter(
 
 @router.get(
     "/detailed_sources",
+    response_model=list[DetailedSourcesResponse],
     status_code=HTTPStatus.OK
 )
-async def detalied_sources_list():
-    pass
+async def detalied_sources_list() -> list[DetailedSourcesResponse]:
+    return sentio_repository.fetch_detailed_sources()
 
 @router.post(
     "/live/parse_prompt",

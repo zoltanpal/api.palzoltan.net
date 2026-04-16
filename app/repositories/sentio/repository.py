@@ -2,13 +2,14 @@ from typing import Any
 
 from palzlib_db.db_client import DBClient
 
-from app.models.sentio import HeadlineResponse, SentimentScoresPerHourResponse
+from app.models.sentio import DetailedSourcesResponse, HeadlineResponse, SentimentScoresPerHourResponse
 from app.repositories.sentio.queries import (
     AGGREGATED_QUERY,
     DRIVERS_QUERY,
     HEADLINES_QUERY,
     SENTIMENT_CHANGE_QUERY,
     SENTIMENT_SCORES_PER_HOUR_QUERY,
+    DETAILED_SOURCES
 )
 from config import pow_live_db_config
 
@@ -82,5 +83,11 @@ class SentioRepository:
 
         return [SentimentScoresPerHourResponse(**dict(row)) for row in rows]
 
+
+    def fetch_detailed_sources(self) -> list[DetailedSourcesResponse]:
+        with self.db_client.get_db_session() as session:
+            rows = session.execute(DETAILED_SOURCES).mappings().all()
+
+        return [DetailedSourcesResponse(**dict(row)) for row in rows]
 
 sentio_repository = SentioRepository(DBClient(db_config=pow_live_db_config))

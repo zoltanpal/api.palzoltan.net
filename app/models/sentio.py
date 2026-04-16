@@ -124,3 +124,10 @@ class QueryPromptRequest(BaseModel):
     prompt: str | None = None
     use_ai: bool = True
 
+class DetailedSourcesResponse(BaseModel):
+    name: str
+    site_url: str
+    current_article_count: int
+    category: str | None = None
+    
+    
