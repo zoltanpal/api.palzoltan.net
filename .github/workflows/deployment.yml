@@ -6,105 +6,88 @@ on:
       environment:
         description: "Select environment to deploy"
         required: true
-        default: dev
+        default: "dev"
         type: choice
         options:
           - dev
           - prod
 
-concurrency:
-  group: deploy-${{ github.event.inputs.environment }}
-  cancel-in-progress: false
-
 jobs:
   deploy:
+    name: Deploy (${{ github.event.inputs.environment }}) API
     runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: ${{ github.event.inputs.environment }}
+      BRANCH_NAME: ${{ github.ref_name }}
+      SERVER_DEPLOYMENT_PATH: ${{ secrets.SERVER_DEPLOYMENT_PATH }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: true
 
       - name: Deploy to server
-        uses: appleboy/ssh-action@v1.1.0
+        uses: appleboy/ssh-action@v1.2.5
         env:
-          ENVIRONMENT: ${{ github.event.inputs.environment }}
-          BRANCH_NAME: ${{ github.ref_name }}
-          REPO_URL: https://github.com/zoltanpal/api.palzoltan.net.git
-          DEV_PATH: ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
-          PROD_PATH: ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+          SERVER_DEPLOYMENT_PATH: ${{ env.SERVER_DEPLOYMENT_PATH }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          envs: ENVIRONMENT,BRANCH_NAME,REPO_URL,DEV_PATH,PROD_PATH
-          script_stop: true
+          envs: ENVIRONMENT,BRANCH_NAME,SERVER_DEPLOYMENT_PATH
           script: |
             set -Eeuo pipefail
 
-            if [ "$ENVIRONMENT" = "prod" ]; then
-              echo "Deploying to production..."
-              WORK_DIR="$PROD_PATH"
-              SERVICE_NAME="api.palzoltan.net.service"
-            else
-              echo "Deploying to development..."
-              WORK_DIR="$DEV_PATH"
-              SERVICE_NAME="devapi.palzoltan.net.service"
-            fi
+            BASE_DIR="${SERVER_DEPLOYMENT_PATH%/}"
+            WORK_DIR="$BASE_DIR/$ENVIRONMENT"
 
-            echo "Work dir: $WORK_DIR"
+            echo "Environment: $ENVIRONMENT"
             echo "Branch: $BRANCH_NAME"
-            echo "Service: $SERVICE_NAME"
+            echo "Base dir: $BASE_DIR"
+            echo "Work dir: $WORK_DIR"
 
-            mkdir -p "$WORK_DIR"
             cd "$WORK_DIR"
 
-            git config --global --add safe.directory "$WORK_DIR"
+            export PYENV_ROOT="$HOME/.pyenv"
+            export PATH="$PYENV_ROOT/bin:$PATH"
 
-            if [ ! -d ".git" ]; then
-              echo "Git repo not found, cloning..."
-              git clone "$REPO_URL" .
+            if command -v pyenv >/dev/null 2>&1; then
+              eval "$(pyenv init -)"
+            else
+              echo "pyenv not found in PATH"
+              exit 1
             fi
+
+            echo "pyenv version: $(pyenv version)"
+            echo "python version: $(python --version)"
 
             echo "Fetching latest code..."
             git fetch --prune origin
 
-            if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
-              git checkout "$BRANCH_NAME"
-            else
-              git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
-            fi
+            echo "Checking out branch..."
+            git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
 
             echo "Resetting working tree..."
             git reset --hard "origin/$BRANCH_NAME"
 
-            # Keep deployment-specific files/folders
-            git clean -fd \
-              -e .env \
-              -e .venv
+            echo "Cleaning untracked files..."
+            git clean -fd -e .env -e .venv
 
             if [ ! -d ".venv" ]; then
-              echo ".venv not found, creating with uv..."
-              uv venv
+              echo "Creating virtual environment..."
+              python -m venv .venv
             fi
 
-            echo "Syncing dependencies with uv..."
-            uv sync --frozen
+            echo "Activating virtual environment..."
+            source .venv/bin/activate
 
-            # Optional: run migrations or other deployment tasks here
-            # .venv/bin/alembic upgrade head
+            echo "Syncing dependencies..."
+            uv sync
 
-            echo "Restarting service..."
-            sudo systemctl restart "$SERVICE_NAME"
+            chmod -R u+rwX "$WORK_DIR"
 
-            echo "Checking service status..."
-            if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
-              echo "Service failed to start: $SERVICE_NAME"
-              echo "----- systemctl status -----"
-              sudo systemctl status "$SERVICE_NAME" --no-pager -l || true
-              echo "----- journalctl -----"
-              sudo journalctl -u "$SERVICE_NAME" -n 100 --no-pager || true
-              exit 1
-            fi
-
-            echo "Service is active."
             echo "Deployment finished successfully."
