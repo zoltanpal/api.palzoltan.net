@@ -1,5 +1,6 @@
 from sqlalchemy import text
 
+
 AGGREGATED_QUERY = text(
     """
     SELECT
