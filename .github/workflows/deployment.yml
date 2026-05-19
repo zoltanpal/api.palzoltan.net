@@ -85,9 +85,7 @@ jobs:
             echo "Activating virtual environment..."
             source .venv/bin/activate
 
-            echo "Syncing dependencies..."
-            uv sync
-
-            chmod -R u+rwX "$WORK_DIR"
+            echo "Restarting service..."
+            sudo systemctl restart "$SERVICE_NAME"
 
             echo "Deployment finished successfully."

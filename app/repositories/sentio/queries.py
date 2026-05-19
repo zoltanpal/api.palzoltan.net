@@ -11,7 +11,7 @@ AGGREGATED_QUERY = text(
     FROM articles a
     JOIN article_sentiments s ON s.article_id = a.id
     WHERE
-        a.title_search_vector @@ plainto_tsquery('english', :query)
+        a.search_vector @@ plainto_tsquery('english', :query)
         AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
         AND a.is_analyzed = true
     """
@@ -34,7 +34,7 @@ HEADLINES_QUERY = text(
     JOIN article_sentiments ars ON ars.article_id = a.id
     JOIN sources s ON s.id = a.source_id
     WHERE
-        a.title_search_vector @@ plainto_tsquery('english', :query)
+        a.search_vector @@ plainto_tsquery('english', :query)
         AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
         AND a.is_analyzed = true
     ORDER BY a.published_at DESC
@@ -51,7 +51,7 @@ SENTIMENT_CHANGE_QUERY = text(
         FROM articles a
         JOIN article_sentiments ars ON ars.article_id = a.id
         WHERE
-            a.title_search_vector @@ plainto_tsquery('english', :query)
+            a.search_vector @@ plainto_tsquery('english', :query)
             AND a.published_at >= NOW() - (:window_hours * 2 * INTERVAL '1 hour')
             AND a.is_analyzed = true
     ),
@@ -91,7 +91,7 @@ DRIVERS_QUERY = text(
     JOIN article_sentiments ars ON ars.article_id = a.id
     JOIN sources s ON s.id = a.source_id
     WHERE
-        a.title_search_vector @@ plainto_tsquery('english', :query)
+        a.search_vector @@ plainto_tsquery('english', :query)
         AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
         AND a.is_analyzed = true
         AND ars.sentiment_label = :driver_label
@@ -132,7 +132,7 @@ SENTIMENT_SCORES_PER_HOUR_QUERY = text(
             ON ars.article_id = a.id
         CROSS JOIN params p
         WHERE
-            a.title_search_vector @@ plainto_tsquery('english', :query)
+            a.search_vector @@ plainto_tsquery('english', :query)
             AND a.published_at >= p.range_start
             AND a.published_at <= p.range_end
             AND a.is_analyzed = true
