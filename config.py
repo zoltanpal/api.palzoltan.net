@@ -31,7 +31,7 @@ def get_db_config(db_name: str) -> DBConfig:
         dialect=os.getenv("DIALECT", "postgresql+psycopg2"),
         host=os.getenv("DB_HOST", "localhost"),
         port=int(os.getenv("DB_PORT", 5432)),
-        username=os.getenv("DB_USER", "postgres"),
+        username=os.getenv("DB_USER", "postgres"),  
         password=os.getenv("DB_PASSWORD", "mysecretpw"),
         dbname=db_name,
     )
