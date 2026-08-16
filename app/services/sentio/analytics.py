@@ -10,6 +10,7 @@ from app.models.sentio import (
     SentimentLabel,
     SummaryLabel,
     SummaryResponse,
+    WhatDrivingResponse,
 )
 from app.repositories.sentio.repository import sentio_repository
 
@@ -188,6 +189,17 @@ def fetch_drivers(
         limit=limit,
     )
 
+def fetch_what_driving(
+        query: str,
+        window_hours: int,
+        limit: int = MAX_DRIVER_HEADLINES,
+) -> list[WhatDrivingResponse]:
+    return sentio_repository.fetch_what_driving(
+        query=query,
+        window_hours=window_hours,
+        limit=limit,
+    )
+
 
 def get_bucket_interval(window_hours: int) -> str:
     if window_hours <= 12:
@@ -211,6 +223,7 @@ def build_live_query_response(
     aggregated = fetch_aggregated(normalized_query, normalized_window)
     headlines = fetch_headlines(normalized_query, normalized_window)
     change = fetch_sentiment_change(normalized_query, normalized_window)
+    what_driving = fetch_what_driving(normalized_query, normalized_window)
 
     drivers_payload: DriversResponse | None = None
     driver_label = None
@@ -252,6 +265,7 @@ def build_live_query_response(
         aggregated=aggregated,
         headlines=headlines,
         change=change,
+        what_driving=what_driving,
         ai_summary=ai_summary,
         drivers=drivers_payload,
         sentiment_scores_per_hour=sentiment_scores_per_hour,

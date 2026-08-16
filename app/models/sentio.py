@@ -71,6 +71,18 @@ class HeadlineResponse(BaseModel):
     sentiment_score: float | None = None
     sentiment_raw: dict[str, Any] | str | None = None
 
+class WhatDrivingResponse(BaseModel):
+    article_count: int
+    source_count: int
+    avg_sentiment_score: float
+    positive_count: int
+    neutral_count: int
+    negative_count: int
+    dominant_sentiment: str
+    representative_title: str
+    representative_source: str
+    representative_published_at: Any
+
 class SentimentScoresPerHourResponse(BaseModel):
     bucket_start: Any
     article_count: int
@@ -103,6 +115,7 @@ class LiveQueryResponse(BaseModel):
     aggregated: AggregatedResponse
     headlines: list[HeadlineResponse] = Field(default_factory=list)
     change: SentimentChangeResponse | None = None
+    what_driving: list[WhatDrivingResponse] = Field(default_factory=list)
     ai_summary: str | None = None
     drivers: DriversResponse | None = None
     sentiment_scores_per_hour: list[SentimentScoresPerHourResponse] = Field(default_factory=list)
