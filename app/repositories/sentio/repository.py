@@ -9,7 +9,8 @@ from app.repositories.sentio.queries import (
     HEADLINES_QUERY,
     SENTIMENT_CHANGE_QUERY,
     SENTIMENT_SCORES_PER_HOUR_QUERY,
-    DETAILED_SOURCES
+    DETAILED_SOURCES,
+    WHAT_DRIVING
 )
 from config import pow_live_db_config
 
@@ -89,5 +90,18 @@ class SentioRepository:
             rows = session.execute(DETAILED_SOURCES).mappings().all()
 
         return [DetailedSourcesResponse(**dict(row)) for row in rows]
+
+
+    def fetch_what_driving(self, query: str, window_hours: int) -> list[dict[str, Any]]:
+        with self.db_client.get_db_session() as session:
+            rows = session.execute(
+                WHAT_DRIVING,
+                {
+                    "query": query,
+                    "window_hours": window_hours,
+                },
+            ).mappings().all()
+        return [dict(row) for row in rows]
+
 
 sentio_repository = SentioRepository(DBClient(db_config=pow_live_db_config))
