@@ -87,6 +87,6 @@ jobs:
 
             echo "Restarting service..."
             # sudo systemctl restart "$SERVICE_NAME"
-            sudo systemctl restart "${ENVIRONMENT}.api.palzoltan.net.service"
+            sudo systemctl restart "devapi.palzoltan.net.service"
 
             echo "Deployment finished successfully."
