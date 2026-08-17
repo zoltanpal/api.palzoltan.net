@@ -92,13 +92,14 @@ class SentioRepository:
         return [DetailedSourcesResponse(**dict(row)) for row in rows]
 
 
-    def fetch_what_driving(self, query: str, window_hours: int) -> list[dict[str, Any]]:
+    def fetch_what_driving(self, query: str, window_hours: int, limit: int) -> list[dict[str, Any]]:
         with self.db_client.get_db_session() as session:
             rows = session.execute(
                 WHAT_DRIVING,
                 {
                     "query": query,
                     "window_hours": window_hours,
+                    "limit": limit,
                 },
             ).mappings().all()
         return [dict(row) for row in rows]
