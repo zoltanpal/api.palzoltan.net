@@ -416,7 +416,7 @@ async def live_analyze(
             WHERE
                 a.title_search_vector @@ plainto_tsquery('english', :query)
                 AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
-                AND a.is_analyzed = true
+                AND a.clustered_at IS NOT NULL
             """
         )
 
@@ -545,7 +545,7 @@ async def live_headlines(
             WHERE
                 a.title_search_vector @@ plainto_tsquery('english', :query)
                 AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
-                AND a.is_analyzed = true
+                AND a.clustered_at IS NOT NULL
             ORDER BY a.published_at DESC
             """
         )

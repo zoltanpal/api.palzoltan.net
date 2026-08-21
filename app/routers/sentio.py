@@ -9,7 +9,7 @@ from app.models.sentio import (
     PromptResponse,
     QueryPromptRequest,
 )
-from app.services.sentio.analytics import build_live_query_response
+from app.services.sentio.analytics import build_live_query_response, build_drivers_response
 from app.services.sentio.query_parser import parse_user_query_with_ai
 from app.repositories.sentio.repository import sentio_repository
 
@@ -58,5 +58,15 @@ async def live_query(
         query=payload.query,
         window_hours=payload.window_hours,
         prompt=payload.prompt,
+        use_ai=payload.use_ai,
+    )
+
+@router.post("/live/drivers",  status_code=HTTPStatus.OK)
+async def live_drivers(
+    payload: QueryPromptRequest,
+) -> list:
+    return build_drivers_response(
+        query=payload.query,
+        window_hours=payload.window_hours,
         use_ai=payload.use_ai,
     )

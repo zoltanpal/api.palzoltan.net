@@ -270,3 +270,14 @@ def build_live_query_response(
         drivers=drivers_payload,
         sentiment_scores_per_hour=sentiment_scores_per_hour,
     )
+
+
+def build_drivers_response(query:str, window_hours: int, use_ai: bool = False) -> list[WhatDrivingResponse]:
+    normalized_query = query.strip()
+    normalized_window = normalize_window(window_hours)
+
+    if use_ai:
+        # placeholder for future AI-driven labeling of drivers, currently not implemented
+        pass
+
+    return fetch_what_driving(normalized_query, normalized_window)
