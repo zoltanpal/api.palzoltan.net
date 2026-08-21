@@ -1,15 +1,14 @@
 from http import HTTPStatus
-from typing import Optional
 
-import requests
+import httpx
 from fastapi import APIRouter, Depends
 from starlette.responses import JSONResponse
-from app.utils.auth.bearer_token import BearerAuth
 
 import config
+from app.utils.auth.bearer_token import BearerAuth
 
 router = APIRouter(
-    prefix="/earthquakes", 
+    prefix="/earthquakes",
     tags=["earthquakes"],
     dependencies=[Depends(BearerAuth())],
 )
@@ -21,10 +20,10 @@ async def get_data(
     end_date: str,
     min_magnitude: float,
     max_magnitude: float,
-    max_lat: Optional[float] = None,
-    max_long: Optional[float] = None,
-    min_lat: Optional[float] = None,
-    min_long: Optional[float] = None,
+    max_lat: float | None = None,
+    max_long: float | None = None,
+    min_lat: float | None = None,
+    min_long: float | None = None,
 ):
     """
     Fetches earthquake data from the USGS API based on the provided parameters.
@@ -59,10 +58,14 @@ async def get_data(
     # Add optional parameters if they are provided
     query_params |= {k: v for k, v in optional_params.items() if v is not None}
 
-    # Construct query string
-    query_string = "&".join(f"{key}={value}" for key, value in query_params.items())
-    url = f"{config.USGS_API_HOST}&{query_string}"
-    response = requests.get(url)
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
+            response = await client.get(config.USGS_API_HOST, params=query_params)
+    except httpx.RequestError:
+        return JSONResponse(
+            status_code=HTTPStatus.BAD_GATEWAY,
+            content={"error": "Earthquake data service is unavailable"},
+        )
 
     if response.status_code == HTTPStatus.OK:
         return response.json()

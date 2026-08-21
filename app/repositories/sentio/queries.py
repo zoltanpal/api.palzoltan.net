@@ -246,7 +246,7 @@ WHAT_DRIVING = text(
             a.published_at DESC
     )
     SELECT
-        cs.matching_article_count,
+        cs.matching_article_count AS article_count,
         cs.cluster_article_count,
         cs.source_count,
         ROUND(cs.avg_sentiment_score::numeric, 3)

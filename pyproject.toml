@@ -17,6 +17,7 @@ dependencies = [
   "python-multipart>=0.0.22",
   "vulture>=2.14",
   "feedparser>=6.0.12",
+  "httpx>=0.28.1",
   "openai>=2.29.0",
 ]
 
