@@ -1,20 +1,25 @@
+import logging
+from collections.abc import Callable, Mapping
+from typing import Any
+
 from app.models.sentio import (
     AggregatedResponse,
     AvgSentimentResponse,
+    ChangeDirection,
     ChangeWindowResponse,
+    DashboardResponse,
     DistributionResponse,
     DriversResponse,
     HeadlineResponse,
-    LiveQueryResponse,
     SentimentChangeResponse,
     SentimentLabel,
     SummaryLabel,
     SummaryResponse,
     WhatDrivingResponse,
 )
-from app.repositories.sentio.repository import sentio_repository
+from app.repositories.sentio.repository import SentioRepository
 
-from typing import Any
+logger = logging.getLogger(__name__)
 
 MIN_WINDOW_HOURS = 1
 MAX_WINDOW_HOURS = 168
@@ -22,7 +27,11 @@ DEFAULT_WINDOW_HOURS = 6
 POSITIVE_SENTIMENT_THRESHOLD = 0.05
 NEGATIVE_SENTIMENT_THRESHOLD = -0.05
 MIXED_SENTIMENT_THRESHOLD = 0.10
+MAX_HEADLINES = 30
 MAX_DRIVER_HEADLINES = 5
+MAX_TOP_ENTITIES = 5
+
+SummaryProvider = Callable[[str, int, list[str], str | None], str | None]
 
 
 def normalize_window(window_hours: int) -> int:
@@ -31,261 +40,205 @@ def normalize_window(window_hours: int) -> int:
 
 def get_score_label(avg_score: float) -> SentimentLabel:
     if avg_score >= POSITIVE_SENTIMENT_THRESHOLD:
-        return SentimentLabel.positive
+        return SentimentLabel.POSITIVE
     if avg_score <= NEGATIVE_SENTIMENT_THRESHOLD:
-        return SentimentLabel.negative
-    return SentimentLabel.neutral
+        return SentimentLabel.NEGATIVE
+    return SentimentLabel.NEUTRAL
 
 
 def get_summary(
-    avg_score: float,
-    positive_pct: float,
-    neutral_pct: float,
-    negative_pct: float,
+    *, avg_score: float, positive_pct: float, neutral_pct: float, negative_pct: float
 ) -> SummaryResponse:
     distribution = {
-        SentimentLabel.positive: positive_pct,
-        SentimentLabel.neutral: neutral_pct,
-        SentimentLabel.negative: negative_pct,
+        SentimentLabel.POSITIVE: positive_pct,
+        SentimentLabel.NEUTRAL: neutral_pct,
+        SentimentLabel.NEGATIVE: negative_pct,
     }
-    dominant_label = max(distribution, key=distribution.get)
+    dominant_label = max(distribution, key=distribution.__getitem__)
     dominant_pct = distribution[dominant_label]
 
-    if (
-        dominant_label == SentimentLabel.positive
-        and dominant_pct >= 70
-        and avg_score >= POSITIVE_SENTIMENT_THRESHOLD
-    ):
-        summary_label = SummaryLabel.positive
-    elif (
-        dominant_label == SentimentLabel.negative
-        and dominant_pct >= 70
-        and avg_score <= NEGATIVE_SENTIMENT_THRESHOLD
-    ):
-        summary_label = SummaryLabel.negative
-    elif dominant_label == SentimentLabel.positive and dominant_pct >= 55:
-        summary_label = SummaryLabel.mostly_positive
-    elif dominant_label == SentimentLabel.negative and dominant_pct >= 55:
-        summary_label = SummaryLabel.mostly_negative
+    if dominant_label is SentimentLabel.POSITIVE and dominant_pct >= 70 and avg_score >= 0.05:
+        label = SummaryLabel.POSITIVE
+    elif dominant_label is SentimentLabel.NEGATIVE and dominant_pct >= 70 and avg_score <= -0.05:
+        label = SummaryLabel.NEGATIVE
+    elif dominant_label is SentimentLabel.POSITIVE and dominant_pct >= 55:
+        label = SummaryLabel.MOSTLY_POSITIVE
+    elif dominant_label is SentimentLabel.NEGATIVE and dominant_pct >= 55:
+        label = SummaryLabel.MOSTLY_NEGATIVE
     elif neutral_pct >= 60 and abs(avg_score) < POSITIVE_SENTIMENT_THRESHOLD:
-        summary_label = SummaryLabel.neutral
+        label = SummaryLabel.NEUTRAL
     elif positive_pct >= 30 and negative_pct >= 30 and abs(avg_score) < MIXED_SENTIMENT_THRESHOLD:
-        summary_label = SummaryLabel.mixed
+        label = SummaryLabel.MIXED
     elif avg_score >= POSITIVE_SENTIMENT_THRESHOLD:
-        summary_label = SummaryLabel.mostly_positive
+        label = SummaryLabel.MOSTLY_POSITIVE
     elif avg_score <= NEGATIVE_SENTIMENT_THRESHOLD:
-        summary_label = SummaryLabel.mostly_negative
+        label = SummaryLabel.MOSTLY_NEGATIVE
     else:
-        summary_label = SummaryLabel.neutral
+        label = SummaryLabel.NEUTRAL
 
     return SummaryResponse(
-        label=summary_label,
+        label=label,
         dominant_label=dominant_label,
         dominant_pct=round(dominant_pct, 2),
     )
 
 
-def fetch_aggregated(query: str, window_hours: int) -> AggregatedResponse:
-    row = sentio_repository.fetch_aggregated_row(query, window_hours)
-
-    total_articles = row["total_articles"] or 0
-    positive_count = row["positive_count"] or 0
-    neutral_count = row["neutral_count"] or 0
-    negative_count = row["negative_count"] or 0
-    avg_sentiment_score = float(row["avg_sentiment_score"] or 0)
-
-    if total_articles:
-        positive_pct = round((positive_count / total_articles) * 100, 2)
-        neutral_pct = round((neutral_count / total_articles) * 100, 2)
-        negative_pct = round((negative_count / total_articles) * 100, 2)
-    else:
-        positive_pct = neutral_pct = negative_pct = 0.0
-
+def build_aggregated_response(row: Mapping[str, Any]) -> AggregatedResponse:
+    total = int(row["total_articles"] or 0)
+    counts = {
+        "positive": int(row["positive_count"] or 0),
+        "neutral": int(row["neutral_count"] or 0),
+        "negative": int(row["negative_count"] or 0),
+    }
+    score = float(row["avg_sentiment_score"] or 0)
+    percentages = {
+        label: round((count / total) * 100, 2) if total else 0.0
+        for label, count in counts.items()
+    }
     return AggregatedResponse(
-        article_count=total_articles,
-        avg_sentiment=AvgSentimentResponse(
-            score=round(avg_sentiment_score, 4),
-            label=get_score_label(avg_sentiment_score),
-        ),
+        article_count=total,
+        avg_sentiment=AvgSentimentResponse(score=round(score, 4), label=get_score_label(score)),
         distribution=DistributionResponse(
-            positive_count=positive_count,
-            neutral_count=neutral_count,
-            negative_count=negative_count,
-            positive_pct=positive_pct,
-            neutral_pct=neutral_pct,
-            negative_pct=negative_pct,
+            positive_count=counts["positive"],
+            neutral_count=counts["neutral"],
+            negative_count=counts["negative"],
+            positive_pct=percentages["positive"],
+            neutral_pct=percentages["neutral"],
+            negative_pct=percentages["negative"],
         ),
         summary=get_summary(
-            avg_score=avg_sentiment_score,
-            positive_pct=positive_pct,
-            neutral_pct=neutral_pct,
-            negative_pct=negative_pct,
+            avg_score=score,
+            positive_pct=percentages["positive"],
+            neutral_pct=percentages["neutral"],
+            negative_pct=percentages["negative"],
         ),
     )
 
 
-def fetch_headlines(query: str, window_hours: int) -> list[HeadlineResponse]:
-    return sentio_repository.fetch_headlines(query, window_hours)
-
-
-def fetch_sentiment_change(query: str, window_hours: int) -> SentimentChangeResponse:
-    rows = sentio_repository.fetch_sentiment_change_rows(query, window_hours)
-
-    current = {"article_count": 0, "avg_sentiment_score": 0.0}
-    previous = {"article_count": 0, "avg_sentiment_score": 0.0}
-
+def build_sentiment_change(rows: list[Mapping[str, Any]]) -> SentimentChangeResponse:
+    windows = {
+        "current": {"article_count": 0, "avg_sentiment_score": 0.0},
+        "previous": {"article_count": 0, "avg_sentiment_score": 0.0},
+    }
     for row in rows:
-        payload = {
-            "article_count": row["article_count"] or 0,
-            "avg_sentiment_score": float(row["avg_sentiment_score"] or 0),
-        }
-        if row["window_name"] == "current":
-            current = payload
-        elif row["window_name"] == "previous":
-            previous = payload
+        window_name = row["window_name"]
+        if window_name in windows:
+            windows[window_name] = {
+                "article_count": int(row["article_count"] or 0),
+                "avg_sentiment_score": float(row["avg_sentiment_score"] or 0),
+            }
 
-    delta = current["avg_sentiment_score"] - previous["avg_sentiment_score"]
-
-    if delta > POSITIVE_SENTIMENT_THRESHOLD:
-        direction = "improving"
-    elif delta < NEGATIVE_SENTIMENT_THRESHOLD:
-        direction = "worsening"
-    else:
-        direction = "stable"
-
+    delta = windows["current"]["avg_sentiment_score"] - windows["previous"]["avg_sentiment_score"]
+    direction = (
+        ChangeDirection.IMPROVING
+        if delta > POSITIVE_SENTIMENT_THRESHOLD
+        else ChangeDirection.WORSENING
+        if delta < NEGATIVE_SENTIMENT_THRESHOLD
+        else ChangeDirection.STABLE
+    )
     return SentimentChangeResponse(
-        current=ChangeWindowResponse(**current),
-        previous=ChangeWindowResponse(**previous),
+        current=ChangeWindowResponse(**windows["current"]),
+        previous=ChangeWindowResponse(**windows["previous"]),
         delta=round(delta, 4),
         direction=direction,
     )
 
 
 def is_meaningful_change(change: SentimentChangeResponse) -> bool:
-    abs_delta = abs(change.delta)
-    article_count = change.current.article_count
-
-    return (abs_delta >= 0.10 and article_count >= 3) or (
-        abs_delta >= 0.07 and article_count >= 5
+    return (abs(change.delta) >= 0.10 and change.current.article_count >= 3) or (
+        abs(change.delta) >= 0.07 and change.current.article_count >= 5
     )
-
-
-def get_driver_label(change: SentimentChangeResponse) -> str | None:
-    if change.direction == "worsening":
-        return "negative"
-    if change.direction == "improving":
-        return "positive"
-    return None
-
-
-def fetch_drivers(
-    query: str,
-    window_hours: int,
-    driver_label: str,
-    limit: int = MAX_DRIVER_HEADLINES,
-) -> list[HeadlineResponse]:
-    return sentio_repository.fetch_drivers(
-        query=query,
-        window_hours=window_hours,
-        driver_label=driver_label,
-        limit=limit,
-    )
-
-def fetch_what_driving(
-        query: str,
-        window_hours: int,
-        limit: int = MAX_DRIVER_HEADLINES,
-) -> list[WhatDrivingResponse]:
-    return sentio_repository.fetch_what_driving(
-        query=query,
-        window_hours=window_hours,
-        limit=limit,
-    )
-
-def fetch_top_entities(window_hours: int, limit: int = 5) -> list[dict[str, Any]]:
-    return sentio_repository.top_entities(window_hours=window_hours, limit=limit)
 
 
 def get_bucket_interval(window_hours: int) -> str:
-    if window_hours <= 12:
-        return "30 minutes"
-    if window_hours >= 48:
-        return "2 hours"
-    return "1 hour"
+    return "30 minutes" if window_hours <= 12 else "2 hours" if window_hours >= 48 else "1 hour"
 
 
-def build_live_query_response(
-    query: str,
-    window_hours: int,
-    use_ai: bool,
-    prompt: str | None = None,
-) -> LiveQueryResponse:
-    from app.services.sentio.summarizer import summarize_headlines_with_ai
+class SentioDashboardService:
+    def __init__(
+        self,
+        repository: SentioRepository,
+        summary_provider: SummaryProvider | None = None,
+    ):
+        self._repository = repository
+        self._summary_provider = summary_provider
 
-    normalized_query = query.strip()
-    normalized_window = normalize_window(window_hours)
-
-    aggregated = fetch_aggregated(normalized_query, normalized_window)
-    headlines = fetch_headlines(normalized_query, normalized_window)
-    change = fetch_sentiment_change(normalized_query, normalized_window)
-    what_driving = fetch_what_driving(normalized_query, normalized_window)
-    top_entities = fetch_top_entities(window_hours=normalized_window, limit=5)
-
-
-    drivers_payload: DriversResponse | None = None
-    driver_label = None
-
-    if is_meaningful_change(change):
-        driver_label = get_driver_label(change)
-        drivers = []
-        if driver_label:
-            drivers = fetch_drivers(
+    def build_dashboard(
+        self, *, query: str, window_hours: int, use_ai: bool, prompt: str | None = None
+    ) -> DashboardResponse:
+        normalized_query = query.strip()
+        normalized_window = normalize_window(window_hours)
+        data = self._repository.fetch_dashboard_data(
+            query=normalized_query,
+            window_hours=normalized_window,
+            headline_limit=MAX_HEADLINES,
+            entity_limit=MAX_TOP_ENTITIES,
+            driver_limit=MAX_DRIVER_HEADLINES,
+            bucket_interval=get_bucket_interval(normalized_window),
+        )
+        change = build_sentiment_change(data.sentiment_change_rows)
+        drivers = self._build_drivers(normalized_query, normalized_window, change)
+        ai_summary = (
+            self._summarize(
                 query=normalized_query,
                 window_hours=normalized_window,
-                driver_label=driver_label,
+                headlines=data.headlines,
+                prompt=prompt,
             )
-
-        drivers_payload = DriversResponse(
-            label=driver_label,
-            is_meaningful=True,
-            headlines=drivers,
+            if use_ai
+            else None
         )
-
-    ai_summary = None
-    if use_ai and headlines:
-        ai_summary = summarize_headlines_with_ai(
+        return DashboardResponse(
             query=normalized_query,
-            prompt=prompt,
             window_hours=normalized_window,
-            headlines=[headline.title for headline in headlines],
+            aggregated=build_aggregated_response(data.aggregated),
+            headlines=data.headlines,
+            change=change,
+            what_driving=data.what_driving,
+            top_entities=data.top_entities,
+            sentiment_scores_per_hour=data.sentiment_scores_per_hour,
+            drivers=drivers,
+            ai_summary=ai_summary,
         )
 
-    sentiment_scores_per_hour = sentio_repository.fetch_sentiment_scores_per_hour(
-        query=normalized_query,
-        window_hours=normalized_window,
-        bucket_interval=get_bucket_interval(normalized_window),
-    )
+    def build_drivers(self, *, query: str, window_hours: int) -> list[WhatDrivingResponse]:
+        return self._repository.fetch_what_driving(
+            query=query.strip(),
+            window_hours=normalize_window(window_hours),
+            limit=MAX_DRIVER_HEADLINES,
+        )
 
-    return LiveQueryResponse(
-        query=normalized_query,
-        window_hours=normalized_window,
-        aggregated=aggregated,
-        headlines=headlines,
-        change=change,
-        what_driving=what_driving,
-        top_entities=top_entities,
-        ai_summary=ai_summary,
-        drivers=drivers_payload,
-        sentiment_scores_per_hour=sentiment_scores_per_hour,
-    )
+    def _build_drivers(
+        self, query: str, window_hours: int, change: SentimentChangeResponse
+    ) -> DriversResponse | None:
+        if not is_meaningful_change(change):
+            return None
+        label = (
+            SentimentLabel.POSITIVE if change.direction is ChangeDirection.IMPROVING
+            else SentimentLabel.NEGATIVE if change.direction is ChangeDirection.WORSENING else None
+        )
+        headlines = self._repository.fetch_drivers(
+            query=query, window_hours=window_hours, label=label.value, limit=MAX_DRIVER_HEADLINES
+        ) if label else []
+        return DriversResponse(label=label, is_meaningful=True, headlines=headlines)
 
-
-def build_drivers_response(query:str, window_hours: int, use_ai: bool = False) -> list[WhatDrivingResponse]:
-    normalized_query = query.strip()
-    normalized_window = normalize_window(window_hours)
-
-    if use_ai:
-        # placeholder for future AI-driven labeling of drivers, currently not implemented
-        pass
-
-    return fetch_what_driving(normalized_query, normalized_window)
+    def _summarize(
+        self,
+        *,
+        query: str,
+        window_hours: int,
+        headlines: list[HeadlineResponse],
+        prompt: str | None,
+    ) -> str | None:
+        if not headlines or self._summary_provider is None:
+            return None
+        try:
+            return self._summary_provider(
+                query,
+                window_hours,
+                [item.title for item in headlines],
+                prompt,
+            )
+        except Exception:
+            logger.exception("Sentio AI summary failed")
+            return None

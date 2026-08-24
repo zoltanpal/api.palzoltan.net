@@ -39,6 +39,7 @@ HEADLINES_QUERY = text(
         AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
         AND a.clustered_at IS NOT NULL
     ORDER BY a.published_at DESC
+    LIMIT :limit
     """
 )
 
@@ -159,23 +160,23 @@ SENTIMENT_SCORES_PER_HOUR_QUERY = text(
     """
 )
 
-DETAILED_SOURCES = text(
+DETAILED_SOURCES_QUERY = text(
     """
-    SELECT 
-        s.name, 
-        s.site_url, 
-        s.category, 
-        count(a.id) as current_article_count
+    SELECT
+        s.name,
+        s.site_url,
+        s.category,
+        COUNT(a.id) AS current_article_count
     FROM sources AS s
-    LEFT JOIN articles AS a ON s.id=a.source_id
-    WHERE s.is_active=True AND s.broken_rss_link=False
-    GROUP BY s.name, s.site_url, s.category 
+    LEFT JOIN articles AS a ON s.id = a.source_id
+    WHERE s.is_active = TRUE AND s.broken_rss_link = FALSE
+    GROUP BY s.name, s.site_url, s.category
     ORDER BY s.name ASC;
     """
 )
 
 
-WHAT_DRIVING = text(
+WHAT_DRIVING_QUERY = text(
     """
     WITH matching_articles AS (
         SELECT
@@ -184,18 +185,14 @@ WHAT_DRIVING = text(
             a.published_at,
             ars.sentiment_score,
             ars.sentiment_label,
-            acm.cluster_id,
-            ac.article_count AS cluster_article_count
+            acm.cluster_id
         FROM articles a
         JOIN article_sentiments ars
             ON ars.article_id = a.id
         JOIN article_cluster_members acm
             ON acm.article_id = a.id
-        JOIN article_clusters ac
-            ON ac.id = acm.cluster_id
         WHERE
-            a.title_search_vector
-                @@ plainto_tsquery('english', :query)
+            a.search_vector @@ plainto_tsquery('english', :query)
             AND a.published_at >= NOW()
                 - (:window_hours * INTERVAL '1 hour')
             AND a.sentiment_analyzed_at IS NOT NULL
@@ -206,8 +203,6 @@ WHAT_DRIVING = text(
         SELECT
             ma.cluster_id,
             COUNT(*) AS matching_article_count,
-            MAX(ma.cluster_article_count)
-                AS cluster_article_count,
             COUNT(DISTINCT ma.source_id)
                 AS source_count,
             AVG(ma.sentiment_score)
@@ -230,9 +225,7 @@ WHAT_DRIVING = text(
     representative_articles AS (
         SELECT DISTINCT ON (ma.cluster_id)
             ma.cluster_id,
-            a.id AS representative_article_id,
             a.title AS representative_title,
-            a.link AS representative_link,
             s.name AS representative_source,
             a.published_at AS representative_published_at
         FROM matching_articles ma
@@ -246,7 +239,6 @@ WHAT_DRIVING = text(
     )
     SELECT
         cs.matching_article_count AS article_count,
-        cs.cluster_article_count,
         cs.source_count,
         ROUND(cs.avg_sentiment_score::numeric, 3)
             AS avg_sentiment_score,
@@ -282,19 +274,20 @@ TOP_ENTITIES_QUERY = text(
         e.entity_text,
         e.entity_type,
         COUNT(DISTINCT ae.article_id) AS article_count
-    --,COUNT(DISTINCT a.source_id) AS source_count
     FROM article_entities ae
     JOIN articles a ON a.id = ae.article_id
     JOIN entities e ON e.id = ae.entity_id
-    WHERE a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
-    AND e.entity_type NOT IN ('location')
+    WHERE
+        a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
+        AND a.entity_analyzed_at IS NOT NULL
+        AND a.clustered_at IS NOT NULL
+        AND e.entity_type <> 'location'
     GROUP BY
         e.id,
         e.entity_text,
         e.entity_type
     ORDER BY
         article_count DESC,
-        --source_count DESC,
         e.entity_text ASC
     LIMIT :limit;
     """
