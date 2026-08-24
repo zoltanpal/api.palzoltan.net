@@ -14,6 +14,8 @@ from app.models.sentio import (
 )
 from app.repositories.sentio.repository import sentio_repository
 
+from typing import Any
+
 MIN_WINDOW_HOURS = 1
 MAX_WINDOW_HOURS = 168
 DEFAULT_WINDOW_HOURS = 6
@@ -200,6 +202,9 @@ def fetch_what_driving(
         limit=limit,
     )
 
+def fetch_top_entities(window_hours: int, limit: int = 5) -> list[dict[str, Any]]:
+    return sentio_repository.top_entities(window_hours=window_hours, limit=limit)
+
 
 def get_bucket_interval(window_hours: int) -> str:
     if window_hours <= 12:
@@ -224,6 +229,8 @@ def build_live_query_response(
     headlines = fetch_headlines(normalized_query, normalized_window)
     change = fetch_sentiment_change(normalized_query, normalized_window)
     what_driving = fetch_what_driving(normalized_query, normalized_window)
+    top_entities = fetch_top_entities(window_hours=normalized_window, limit=5)
+
 
     drivers_payload: DriversResponse | None = None
     driver_label = None
@@ -266,6 +273,7 @@ def build_live_query_response(
         headlines=headlines,
         change=change,
         what_driving=what_driving,
+        top_entities=top_entities,
         ai_summary=ai_summary,
         drivers=drivers_payload,
         sentiment_scores_per_hour=sentiment_scores_per_hour,

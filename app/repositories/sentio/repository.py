@@ -10,6 +10,7 @@ from app.repositories.sentio.queries import (
     SENTIMENT_CHANGE_QUERY,
     SENTIMENT_SCORES_PER_HOUR_QUERY,
     DETAILED_SOURCES,
+    TOP_ENTITIES_QUERY,
     WHAT_DRIVING
 )
 from config import pow_live_db_config
@@ -104,5 +105,16 @@ class SentioRepository:
             ).mappings().all()
         return [dict(row) for row in rows]
 
+
+    def top_entities(self, window_hours: int, limit: int = 5) -> list[dict[str, Any]]:
+        with self.db_client.get_db_session() as session:
+            rows = session.execute(
+                TOP_ENTITIES_QUERY, {
+                    "window_hours": window_hours,
+                    "limit": limit
+                }
+            ).mappings().all()
+
+        return [dict(row) for row in rows]
 
 sentio_repository = SentioRepository(DBClient(db_config=pow_live_db_config))

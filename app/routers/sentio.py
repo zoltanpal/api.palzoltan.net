@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.models.sentio import (
     DetailedSourcesResponse,
-    LiveQueryResponse,
+    DashboardResponse,
     PromptRequest,
     PromptResponse,
     QueryPromptRequest,
@@ -50,10 +50,10 @@ async def parse_prompt(payload: PromptRequest) -> PromptResponse:
     )
 
 
-@router.post("/live/query", response_model=LiveQueryResponse, status_code=HTTPStatus.OK)
+@router.post("/live/query", response_model=DashboardResponse, status_code=HTTPStatus.OK)
 async def live_query(
     payload: QueryPromptRequest,
-) -> LiveQueryResponse:
+) -> DashboardResponse:
     return build_live_query_response(
         query=payload.query,
         window_hours=payload.window_hours,

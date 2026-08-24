@@ -109,7 +109,7 @@ class DriversResponse(BaseModel):
     headlines: list[HeadlineResponse] = Field(default_factory=list)
 
 
-class LiveQueryResponse(BaseModel):
+class DashboardResponse(BaseModel):
     query: str
     window_hours: int
     aggregated: AggregatedResponse
@@ -119,6 +119,7 @@ class LiveQueryResponse(BaseModel):
     ai_summary: str | None = None
     drivers: DriversResponse | None = None
     sentiment_scores_per_hour: list[SentimentScoresPerHourResponse] = Field(default_factory=list)
+    top_entities: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class PromptResponse(BaseModel):

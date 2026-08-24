@@ -227,7 +227,6 @@ WHAT_DRIVING = text(
         GROUP BY ma.cluster_id
         HAVING COUNT(*) > 1
     ),
-
     representative_articles AS (
         SELECT DISTINCT ON (ma.cluster_id)
             ma.cluster_id,
@@ -273,7 +272,30 @@ WHAT_DRIVING = text(
         cs.matching_article_count DESC,
         cs.source_count DESC,
         cs.last_seen_at DESC
+    LIMIT :limit;
+    """
+)
 
+TOP_ENTITIES_QUERY = text(
+    """
+    SELECT
+        e.entity_text,
+        e.entity_type,
+        COUNT(DISTINCT ae.article_id) AS article_count
+    --,COUNT(DISTINCT a.source_id) AS source_count
+    FROM article_entities ae
+    JOIN articles a ON a.id = ae.article_id
+    JOIN entities e ON e.id = ae.entity_id
+    WHERE a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
+    AND e.entity_type NOT IN ('location')
+    GROUP BY
+        e.id,
+        e.entity_text,
+        e.entity_type
+    ORDER BY
+        article_count DESC,
+        --source_count DESC,
+        e.entity_text ASC
     LIMIT :limit;
     """
 )
