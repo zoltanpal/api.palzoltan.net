@@ -201,7 +201,7 @@ class SentioDashboardService:
             ai_summary=ai_summary,
         )
 
-    def build_drivers(self, *, query: str, window_hours: int) -> list[WhatDrivingResponse]:
+    def build_drivers(self, *, query: str, window_hours: int) -> WhatDrivingResponse:
         return self._repository.fetch_what_driving(
             query=query.strip(),
             window_hours=normalize_window(window_hours),

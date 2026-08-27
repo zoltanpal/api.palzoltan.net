@@ -10,6 +10,8 @@ from app.models.sentio import (
     SentimentScoresPerHourResponse,
     TopEntityResponse,
     WhatDrivingResponse,
+    Drivers
+        
 )
 from app.repositories.sentio.queries import (
     AGGREGATED_QUERY,
@@ -103,7 +105,7 @@ class SentioRepository:
 
     def fetch_what_driving(
         self, *, query: str, window_hours: int, limit: int
-    ) -> list[WhatDrivingResponse]:
+    ) -> WhatDrivingResponse:
         with self._db_client.get_db_session() as session:
             rows = session.execute(
                 WHAT_DRIVING_QUERY,
@@ -121,8 +123,31 @@ class SentioRepository:
         return [HeadlineResponse(**dict(row)) for row in rows]
 
     @staticmethod
-    def _what_driving_models(rows: list[Mapping[str, Any]]) -> list[WhatDrivingResponse]:
-        return [WhatDrivingResponse(**dict(row)) for row in rows]
+    def _what_driving_models(rows: list[Mapping[str, Any]]) -> WhatDrivingResponse:
+        if not rows:
+            return WhatDrivingResponse(
+                main_reason=None,
+                drivers=[],
+            )
+
+        first_row = rows[0]
+        main_reason = (
+            first_row.get("driver_label")
+            or first_row.get("representative_title")
+        )
+
+        drivers = []
+        for row in rows:
+            driver_data = dict(row)
+            driver_data.pop("driver_label", None)
+            drivers.append(
+                Drivers(**driver_data)
+            )
+
+        return WhatDrivingResponse(
+            main_reason=main_reason,
+            drivers=drivers,
+        )
 
     @staticmethod
     def _top_entity_models(rows: list[Mapping[str, Any]]) -> list[TopEntityResponse]:

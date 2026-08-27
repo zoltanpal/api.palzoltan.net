@@ -192,7 +192,10 @@ WHAT_DRIVING_QUERY = text(
         JOIN article_cluster_members acm
             ON acm.article_id = a.id
         WHERE
-            a.search_vector @@ plainto_tsquery('english', :query)
+            a.search_vector @@ plainto_tsquery(
+                'english',
+                :query
+            )
             AND a.published_at >= NOW()
                 - (:window_hours * INTERVAL '1 hour')
             AND a.sentiment_analyzed_at IS NOT NULL
@@ -203,10 +206,8 @@ WHAT_DRIVING_QUERY = text(
         SELECT
             ma.cluster_id,
             COUNT(*) AS matching_article_count,
-            COUNT(DISTINCT ma.source_id)
-                AS source_count,
-            AVG(ma.sentiment_score)
-                AS avg_sentiment_score,
+            COUNT(DISTINCT ma.source_id) AS source_count,
+            AVG(ma.sentiment_score) AS avg_sentiment_score,
             COUNT(*) FILTER (
                 WHERE ma.sentiment_label = 'positive'
             ) AS positive_count,
@@ -238,10 +239,17 @@ WHAT_DRIVING_QUERY = text(
             a.published_at DESC
     )
     SELECT
+        cs.cluster_id,
+        COALESCE(
+            NULLIF(BTRIM(ac.label), ''),
+            ra.representative_title
+        ) AS driver_label,
         cs.matching_article_count AS article_count,
         cs.source_count,
-        ROUND(cs.avg_sentiment_score::numeric, 3)
-            AS avg_sentiment_score,
+        ROUND(
+            cs.avg_sentiment_score::numeric,
+            3
+        ) AS avg_sentiment_score,
         cs.positive_count,
         cs.neutral_count,
         cs.negative_count,
@@ -258,6 +266,8 @@ WHAT_DRIVING_QUERY = text(
         ra.representative_source,
         ra.representative_published_at
     FROM cluster_stats cs
+    JOIN article_clusters ac
+        ON ac.id = cs.cluster_id
     JOIN representative_articles ra
         ON ra.cluster_id = cs.cluster_id
     ORDER BY

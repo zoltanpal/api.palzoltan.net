@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
-
+from typing import List
 
 class Intent(str, Enum):
     SUMMARY = "summary"
@@ -78,8 +78,7 @@ class HeadlineResponse(BaseModel):
     sentiment_score: float | None = None
     sentiment_raw: dict[str, object] | str | None = None
 
-
-class WhatDrivingResponse(BaseModel):
+class Drivers(BaseModel):
     article_count: int
     source_count: int
     avg_sentiment_score: float
@@ -90,6 +89,10 @@ class WhatDrivingResponse(BaseModel):
     representative_title: str
     representative_source: str
     representative_published_at: datetime
+
+class WhatDrivingResponse(BaseModel):
+    main_reason: str
+    drivers: List[Drivers]
 
 
 class SentimentScoresPerHourResponse(BaseModel):
