@@ -127,7 +127,7 @@ class SentioRepository:
     def _what_driving_models(rows: list[Mapping[str, Any]]) -> WhatDrivingResponse:
         if not rows:
             return WhatDrivingResponse(
-                main_reason=None,
+                main_reason="",
                 drivers=[],
             )
 
@@ -141,7 +141,7 @@ class SentioRepository:
         drivers = []
         for row in rows:
             driver_data = dict(row)
-            driver_data.pop("driver_label", None)
+            driver_data.pop("driver_label", "")
             drivers.append(
                 Drivers(**driver_data)
             )
