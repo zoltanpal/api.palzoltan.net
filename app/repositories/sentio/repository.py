@@ -111,6 +111,7 @@ class SentioRepository:
                 WHAT_DRIVING_QUERY,
                 {"query": query, "window_hours": window_hours, "limit": limit},
             ).mappings().all()
+
         return self._what_driving_models(rows)
 
     def fetch_detailed_sources(self) -> list[DetailedSourcesResponse]:
@@ -131,6 +132,7 @@ class SentioRepository:
             )
 
         first_row = rows[0]
+        print(first_row)
         main_reason = (
             first_row.get("driver_label")
             or first_row.get("representative_title")

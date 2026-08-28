@@ -132,10 +132,10 @@ class DashboardResponse(BaseModel):
     query: str
     window_hours: int
     aggregated: AggregatedResponse
-    headlines: list[HeadlineResponse] = Field(default_factory=list)
     change: SentimentChangeResponse
-    what_driving: list[WhatDrivingResponse] = Field(default_factory=list)
+    what_driving: WhatDrivingResponse = Field(default_factory=WhatDrivingResponse)
     top_entities: list[TopEntityResponse] = Field(default_factory=list)
+    headlines: list[HeadlineResponse] = Field(default_factory=list)
     sentiment_scores_per_hour: list[SentimentScoresPerHourResponse] = Field(default_factory=list)
     drivers: DriversResponse | None = None
     ai_summary: str | None = None

@@ -241,7 +241,7 @@ WHAT_DRIVING_QUERY = text(
     SELECT
         cs.cluster_id,
         COALESCE(
-            NULLIF(BTRIM(ac.label), ''),
+            NULLIF(BTRIM(ac.short_label), ''),
             ra.representative_title
         ) AS driver_label,
         cs.matching_article_count AS article_count,
