@@ -181,16 +181,21 @@ WHAT_DRIVING_QUERY = text(
     WITH matching_articles AS (
         SELECT
             a.id,
+            a.title,
             a.source_id,
+            s.name AS source_name,
             a.published_at,
             ars.sentiment_score,
             ars.sentiment_label,
-            acm.cluster_id
+            acm.cluster_id,
+            acm.similarity_score
         FROM articles a
         JOIN article_sentiments ars
             ON ars.article_id = a.id
         JOIN article_cluster_members acm
             ON acm.article_id = a.id
+        JOIN sources s
+            ON s.id = a.source_id
         WHERE
             a.search_vector @@ plainto_tsquery(
                 'english',
@@ -226,17 +231,33 @@ WHAT_DRIVING_QUERY = text(
     representative_articles AS (
         SELECT DISTINCT ON (ma.cluster_id)
             ma.cluster_id,
-            a.title AS representative_title,
-            s.name AS representative_source,
-            a.published_at AS representative_published_at
+            ma.title AS representative_title,
+            ma.source_name AS representative_source,
+            ma.published_at AS representative_published_at
         FROM matching_articles ma
-        JOIN articles a
-            ON a.id = ma.id
-        JOIN sources s
-            ON s.id = a.source_id
         ORDER BY
             ma.cluster_id,
-            a.published_at DESC
+            ma.published_at DESC
+    ),
+    cluster_headlines AS (
+        SELECT
+            ma.cluster_id,
+            JSONB_AGG(
+                JSONB_BUILD_OBJECT(
+                    'article_id', ma.id,
+                    'title', ma.title,
+                    'source', ma.source_name,
+                    'published_at', ma.published_at,
+                    'sentiment_label', ma.sentiment_label,
+                    'sentiment_score',
+                        ROUND(ma.sentiment_score::numeric, 3)
+                )
+                ORDER BY
+                    ma.similarity_score DESC NULLS LAST,
+                    ma.published_at DESC
+            ) AS headlines
+        FROM matching_articles ma
+        GROUP BY ma.cluster_id
     )
     SELECT
         cs.cluster_id,
@@ -264,12 +285,15 @@ WHAT_DRIVING_QUERY = text(
         END AS dominant_sentiment,
         ra.representative_title,
         ra.representative_source,
-        ra.representative_published_at
+        ra.representative_published_at,
+        COALESCE(ch.headlines, '[]'::jsonb) AS headlines
     FROM cluster_stats cs
     JOIN article_clusters ac
         ON ac.id = cs.cluster_id
     JOIN representative_articles ra
         ON ra.cluster_id = cs.cluster_id
+    JOIN cluster_headlines ch
+        ON ch.cluster_id = cs.cluster_id
     ORDER BY
         cs.matching_article_count DESC,
         cs.source_count DESC,
