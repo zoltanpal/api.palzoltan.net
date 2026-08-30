@@ -89,10 +89,12 @@ class Drivers(BaseModel):
     representative_title: str
     representative_source: str
     representative_published_at: datetime
+    headlines: List[dict]
 
 class WhatDrivingResponse(BaseModel):
     main_reason: str
     drivers: List[Drivers]
+    
 
 
 class SentimentScoresPerHourResponse(BaseModel):
@@ -131,6 +133,7 @@ class TopEntityResponse(BaseModel):
 class DashboardResponse(BaseModel):
     query: str
     window_hours: int
+    ai_summary: str | None = None
     aggregated: AggregatedResponse
     change: SentimentChangeResponse
     what_driving: WhatDrivingResponse = Field(default_factory=WhatDrivingResponse)
@@ -138,7 +141,7 @@ class DashboardResponse(BaseModel):
     headlines: list[HeadlineResponse] = Field(default_factory=list)
     sentiment_scores_per_hour: list[SentimentScoresPerHourResponse] = Field(default_factory=list)
     drivers: DriversResponse | None = None
-    ai_summary: str | None = None
+    
 
 
 class PromptResponse(BaseModel):

@@ -132,7 +132,7 @@ class SentioRepository:
             )
 
         first_row = rows[0]
-        print(first_row)
+
         main_reason = (
             first_row.get("driver_label")
             or first_row.get("representative_title")

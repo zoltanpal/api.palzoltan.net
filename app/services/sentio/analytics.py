@@ -10,7 +10,7 @@ from app.models.sentio import (
     DashboardResponse,
     DistributionResponse,
     DriversResponse,
-    HeadlineResponse,
+    # HeadlineResponse,
     SentimentChangeResponse,
     SentimentLabel,
     SummaryLabel,
@@ -177,12 +177,12 @@ class SentioDashboardService:
             bucket_interval=get_bucket_interval(normalized_window),
         )
         change = build_sentiment_change(data.sentiment_change_rows)
-        drivers = self._build_drivers(normalized_query, normalized_window, change)
+        # drivers = self._build_drivers(normalized_query, normalized_window, change)
         ai_summary = (
             self._summarize(
                 query=normalized_query,
                 window_hours=normalized_window,
-                headlines=data.headlines,
+                drivers=data.what_driving,
                 prompt=prompt,
             )
             if use_ai
@@ -197,7 +197,7 @@ class SentioDashboardService:
             what_driving=data.what_driving,
             top_entities=data.top_entities,
             sentiment_scores_per_hour=data.sentiment_scores_per_hour,
-            drivers=drivers,
+            # drivers=drivers, this doesn't need anymore and the what_driving will be drivers
             ai_summary=ai_summary,
         )
 
@@ -227,16 +227,16 @@ class SentioDashboardService:
         *,
         query: str,
         window_hours: int,
-        headlines: list[HeadlineResponse],
-        prompt: str | None,
+        drivers: list,
+        prompt,
     ) -> str | None:
-        if not headlines or self._summary_provider is None:
+        if not drivers or self._summary_provider is None:
             return None
         try:
             return self._summary_provider(
                 query,
                 window_hours,
-                [item.title for item in headlines],
+                drivers,
                 prompt,
             )
         except Exception:
