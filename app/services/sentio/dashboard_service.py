@@ -9,13 +9,10 @@ from app.models.sentio import (
     ChangeWindowResponse,
     DashboardResponse,
     DistributionResponse,
-    DriversResponse,
-    # HeadlineResponse,
     SentimentChangeResponse,
     SentimentLabel,
     SummaryLabel,
     SummaryResponse,
-    WhatDrivingResponse,
 )
 from app.repositories.sentio.repository import SentioRepository
 
@@ -144,12 +141,6 @@ def build_sentiment_change(rows: list[Mapping[str, Any]]) -> SentimentChangeResp
     )
 
 
-def is_meaningful_change(change: SentimentChangeResponse) -> bool:
-    return (abs(change.delta) >= 0.10 and change.current.article_count >= 3) or (
-        abs(change.delta) >= 0.07 and change.current.article_count >= 5
-    )
-
-
 def get_bucket_interval(window_hours: int) -> str:
     return "30 minutes" if window_hours <= 12 else "2 hours" if window_hours >= 48 else "1 hour"
 
@@ -177,7 +168,6 @@ class SentioDashboardService:
             bucket_interval=get_bucket_interval(normalized_window),
         )
         change = build_sentiment_change(data.sentiment_change_rows)
-        # drivers = self._build_drivers(normalized_query, normalized_window, change)
         ai_summary = (
             self._summarize(
                 query=normalized_query,
@@ -197,30 +187,8 @@ class SentioDashboardService:
             what_driving=data.what_driving,
             top_entities=data.top_entities,
             sentiment_scores_per_hour=data.sentiment_scores_per_hour,
-            # drivers=drivers, this doesn't need anymore and the what_driving will be drivers
             ai_summary=ai_summary,
         )
-
-    def build_drivers(self, *, query: str, window_hours: int) -> WhatDrivingResponse:
-        return self._repository.fetch_what_driving(
-            query=query.strip(),
-            window_hours=normalize_window(window_hours),
-            limit=MAX_DRIVER_HEADLINES,
-        )
-
-    def _build_drivers(
-        self, query: str, window_hours: int, change: SentimentChangeResponse
-    ) -> DriversResponse | None:
-        if not is_meaningful_change(change):
-            return None
-        label = (
-            SentimentLabel.POSITIVE if change.direction is ChangeDirection.IMPROVING
-            else SentimentLabel.NEGATIVE if change.direction is ChangeDirection.WORSENING else None
-        )
-        headlines = self._repository.fetch_drivers(
-            query=query, window_hours=window_hours, label=label.value, limit=MAX_DRIVER_HEADLINES
-        ) if label else []
-        return DriversResponse(label=label, is_meaningful=True, headlines=headlines)
 
     def _summarize(
         self,

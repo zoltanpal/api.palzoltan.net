@@ -66,7 +66,7 @@ def build_summary_prompt(
             "source_count": driver.source_count,
             "dominant_sentiment": driver.dominant_sentiment,
             "headlines": [
-                headline["title"]
+                headline.title
                 for headline in driver.headlines[:3]
             ],
         }

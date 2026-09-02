@@ -1,9 +1,8 @@
 from app.models.sentio import ChangeDirection, SentimentLabel, SummaryLabel
-from app.services.sentio.analytics import (
+from app.services.sentio.dashboard_service import (
     build_aggregated_response,
     build_sentiment_change,
     get_bucket_interval,
-    is_meaningful_change,
     normalize_window,
 )
 
@@ -49,7 +48,6 @@ def test_sentiment_change_defaults_missing_previous_window_to_zero() -> None:
     assert change.previous.article_count == 0
     assert change.delta == -0.2
     assert change.direction is ChangeDirection.WORSENING
-    assert is_meaningful_change(change)
 
 
 def test_window_normalization_and_bucket_selection() -> None:

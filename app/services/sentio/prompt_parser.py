@@ -4,8 +4,8 @@ import re
 from typing import Any
 
 from app.models.sentio import Intent, ParsedQuery
-from app.services.sentio.analytics import DEFAULT_WINDOW_HOURS, normalize_window
-from app.services.sentio.prompts import build_extractor_prompt
+from app.services.sentio.ai_prompts import build_extractor_prompt
+from app.services.sentio.dashboard_service import DEFAULT_WINDOW_HOURS, normalize_window
 from config import OPENAI_API_KEY
 
 logger = logging.getLogger(__name__)

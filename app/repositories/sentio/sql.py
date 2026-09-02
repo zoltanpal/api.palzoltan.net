@@ -76,41 +76,6 @@ SENTIMENT_CHANGE_QUERY = text(
     """
 )
 
-DRIVERS_QUERY = text(
-    """
-    WITH deduplicated AS (
-        SELECT DISTINCT ON (a.title_hash)
-            a.id,
-            a.title,
-            a.title_hash,
-            a.summary,
-            a.link,
-            a.published_at,
-            s.name AS source_name,
-            ars.sentiment_label,
-            ars.sentiment_score,
-            ars.sentiment_raw
-        FROM articles a
-        JOIN article_sentiments ars ON ars.article_id = a.id
-        JOIN sources s ON s.id = a.source_id
-        WHERE
-            a.search_vector @@ plainto_tsquery('english', :query)
-            AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
-            AND a.clustered_at IS NOT NULL
-            AND ars.sentiment_label = :driver_label
-        ORDER BY
-            a.title_hash,
-            a.published_at DESC
-    )
-    SELECT *
-    FROM deduplicated
-    ORDER BY
-        ABS(sentiment_score) DESC,
-        published_at DESC
-    LIMIT :limit;
-    """
-)
-
 SENTIMENT_SCORES_PER_HOUR_QUERY = text(
     """
     WITH params AS (

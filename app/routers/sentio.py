@@ -4,17 +4,15 @@ from fastapi import APIRouter, Depends
 
 from app.models.sentio import (
     DashboardResponse,
-    DetailedSourcesResponse,
-    DriversRequest,
+    DetailedSourceResponse,
     PromptRequest,
     PromptResponse,
     QueryPromptRequest,
-    WhatDrivingResponse,
 )
 from app.repositories.sentio.repository import SentioRepository, get_sentio_repository
-from app.services.sentio.analytics import SentioDashboardService
-from app.services.sentio.query_parser import parse_user_query_with_ai
-from app.services.sentio.summarizer import summarize_what_happend_with_ai
+from app.services.sentio.ai_summarizer import summarize_what_happend_with_ai
+from app.services.sentio.dashboard_service import SentioDashboardService
+from app.services.sentio.prompt_parser import parse_user_query_with_ai
 
 router = APIRouter(prefix="/sentio", tags=["sentio"])
 
@@ -27,12 +25,12 @@ def get_dashboard_service(
 
 @router.get(
     "/detailed_sources",
-    response_model=list[DetailedSourcesResponse],
+    response_model=list[DetailedSourceResponse],
     status_code=HTTPStatus.OK,
 )
 def detailed_sources_list(
     repository: SentioRepository = Depends(get_sentio_repository),
-) -> list[DetailedSourcesResponse]:
+) -> list[DetailedSourceResponse]:
     return repository.fetch_detailed_sources()
 
 
@@ -46,9 +44,8 @@ def parse_prompt(payload: PromptRequest) -> PromptResponse:
         intent=parsed.intent,
     )
 
-
-@router.post("/query", response_model=DashboardResponse, status_code=HTTPStatus.OK)
-def live_query(
+@router.post("/dashboard", response_model=DashboardResponse, status_code=HTTPStatus.OK)
+def dashboard(
     payload: QueryPromptRequest,
     service: SentioDashboardService = Depends(get_dashboard_service),
 ) -> DashboardResponse:
@@ -58,15 +55,3 @@ def live_query(
         prompt=payload.prompt,
         use_ai=payload.use_ai,
     )
-
-
-@router.post(
-    "/drivers",
-    response_model=list[WhatDrivingResponse],
-    status_code=HTTPStatus.OK,
-)
-def live_drivers(
-    payload: DriversRequest,
-    service: SentioDashboardService = Depends(get_dashboard_service),
-) -> list[WhatDrivingResponse]:
-    return service.build_drivers(query=payload.query, window_hours=payload.window_hours)

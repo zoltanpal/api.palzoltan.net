@@ -1,4 +1,4 @@
-from app.services.sentio.prompts import build_headline_summary_prompt, build_summary_prompt
+from app.services.sentio.ai_prompts import build_headline_summary_prompt, build_summary_prompt
 from config import OPENAI_API_KEY
 from app.services.ai_assistant import OpenAIAssistant
 

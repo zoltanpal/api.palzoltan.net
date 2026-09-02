@@ -5,18 +5,16 @@ from typing import Any, Mapping
 from palzlib_db.db_client import DBClient
 
 from app.models.sentio import (
-    DetailedSourcesResponse,
+    DetailedSourceResponse,
+    DriverResponse,
     HeadlineResponse,
     SentimentScoresPerHourResponse,
     TopEntityResponse,
     WhatDrivingResponse,
-    Drivers
-        
 )
-from app.repositories.sentio.queries import (
+from app.repositories.sentio.sql import (
     AGGREGATED_QUERY,
     DETAILED_SOURCES_QUERY,
-    DRIVERS_QUERY,
     HEADLINES_QUERY,
     SENTIMENT_CHANGE_QUERY,
     SENTIMENT_SCORES_PER_HOUR_QUERY,
@@ -31,7 +29,7 @@ class DashboardData:
     aggregated: Mapping[str, Any]
     headlines: list[HeadlineResponse]
     sentiment_change_rows: list[Mapping[str, Any]]
-    what_driving: list[WhatDrivingResponse]
+    what_driving: WhatDrivingResponse | None
     top_entities: list[TopEntityResponse]
     sentiment_scores_per_hour: list[SentimentScoresPerHourResponse]
 
@@ -88,24 +86,9 @@ class SentioRepository:
             sentiment_scores_per_hour=scores,
         )
 
-    def fetch_drivers(
-        self, *, query: str, window_hours: int, label: str, limit: int
-    ) -> list[HeadlineResponse]:
-        with self._db_client.get_db_session() as session:
-            rows = session.execute(
-                DRIVERS_QUERY,
-                {
-                    "query": query,
-                    "window_hours": window_hours,
-                    "driver_label": label,
-                    "limit": limit,
-                },
-            ).mappings().all()
-        return self._headline_models(rows)
-
     def fetch_what_driving(
         self, *, query: str, window_hours: int, limit: int
-    ) -> WhatDrivingResponse:
+    ) -> WhatDrivingResponse | None:
         with self._db_client.get_db_session() as session:
             rows = session.execute(
                 WHAT_DRIVING_QUERY,
@@ -114,22 +97,19 @@ class SentioRepository:
 
         return self._what_driving_models(rows)
 
-    def fetch_detailed_sources(self) -> list[DetailedSourcesResponse]:
+    def fetch_detailed_sources(self) -> list[DetailedSourceResponse]:
         with self._db_client.get_db_session() as session:
             rows = session.execute(DETAILED_SOURCES_QUERY).mappings().all()
-        return [DetailedSourcesResponse(**dict(row)) for row in rows]
+        return [DetailedSourceResponse(**dict(row)) for row in rows]
 
     @staticmethod
     def _headline_models(rows: list[Mapping[str, Any]]) -> list[HeadlineResponse]:
         return [HeadlineResponse(**dict(row)) for row in rows]
 
     @staticmethod
-    def _what_driving_models(rows: list[Mapping[str, Any]]) -> WhatDrivingResponse:
+    def _what_driving_models(rows: list[Mapping[str, Any]]) -> WhatDrivingResponse | None:
         if not rows:
-            return WhatDrivingResponse(
-                main_reason="",
-                drivers=[],
-            )
+            return None
 
         first_row = rows[0]
 
@@ -143,7 +123,7 @@ class SentioRepository:
             driver_data = dict(row)
             driver_data.pop("driver_label", "")
             drivers.append(
-                Drivers(**driver_data)
+                DriverResponse(**driver_data)
             )
 
         return WhatDrivingResponse(
