@@ -143,7 +143,23 @@ DETAILED_SOURCES_QUERY = text(
 
 WHAT_DRIVING_QUERY = text(
     """
-    WITH matching_articles AS (
+    WITH candidate_cluster_ids AS (
+        SELECT DISTINCT
+            acm.cluster_id
+        FROM articles a
+        JOIN article_cluster_members acm
+            ON acm.article_id = a.id
+        WHERE
+            a.search_vector @@ plainto_tsquery(
+                'english',
+                :query
+            )
+            AND a.published_at >= NOW()
+                - (:window_hours * INTERVAL '1 hour')
+            AND a.sentiment_analyzed_at IS NOT NULL
+            AND a.entity_analyzed_at IS NOT NULL
+    ),
+    cluster_articles AS (
         SELECT
             a.id,
             a.title,
@@ -154,75 +170,73 @@ WHAT_DRIVING_QUERY = text(
             ars.sentiment_label,
             acm.cluster_id,
             acm.similarity_score
-        FROM articles a
+        FROM candidate_cluster_ids cci
+        JOIN article_cluster_members acm
+            ON acm.cluster_id = cci.cluster_id
+        JOIN articles a
+            ON a.id = acm.article_id
         JOIN article_sentiments ars
             ON ars.article_id = a.id
-        JOIN article_cluster_members acm
-            ON acm.article_id = a.id
         JOIN sources s
             ON s.id = a.source_id
         WHERE
-            a.search_vector @@ plainto_tsquery(
-                'english',
-                :query
-            )
-            AND a.published_at >= NOW()
+            a.published_at >= NOW()
                 - (:window_hours * INTERVAL '1 hour')
             AND a.sentiment_analyzed_at IS NOT NULL
             AND a.entity_analyzed_at IS NOT NULL
-            AND a.clustered_at IS NOT NULL
     ),
     cluster_stats AS (
         SELECT
-            ma.cluster_id,
-            COUNT(*) AS matching_article_count,
-            COUNT(DISTINCT ma.source_id) AS source_count,
-            AVG(ma.sentiment_score) AS avg_sentiment_score,
-            COUNT(*) FILTER (
-                WHERE ma.sentiment_label = 'positive'
+            ca.cluster_id,
+            COUNT(DISTINCT ca.id) AS article_count,
+            COUNT(DISTINCT ca.source_id) AS source_count,
+            AVG(ca.sentiment_score) AS avg_sentiment_score,
+            COUNT(DISTINCT ca.id) FILTER (
+                WHERE ca.sentiment_label = 'positive'
             ) AS positive_count,
-            COUNT(*) FILTER (
-                WHERE ma.sentiment_label = 'neutral'
+            COUNT(DISTINCT ca.id) FILTER (
+                WHERE ca.sentiment_label = 'neutral'
             ) AS neutral_count,
-            COUNT(*) FILTER (
-                WHERE ma.sentiment_label = 'negative'
+            COUNT(DISTINCT ca.id) FILTER (
+                WHERE ca.sentiment_label = 'negative'
             ) AS negative_count,
-            MIN(ma.published_at) AS first_seen_at,
-            MAX(ma.published_at) AS last_seen_at
-        FROM matching_articles ma
-        GROUP BY ma.cluster_id
-        HAVING COUNT(*) > 1
+            MIN(ca.published_at) AS first_seen_at,
+            MAX(ca.published_at) AS last_seen_at
+        FROM cluster_articles ca
+        GROUP BY ca.cluster_id
+        HAVING COUNT(DISTINCT ca.id) > 1
     ),
     representative_articles AS (
-        SELECT DISTINCT ON (ma.cluster_id)
-            ma.cluster_id,
-            ma.title AS representative_title,
-            ma.source_name AS representative_source,
-            ma.published_at AS representative_published_at
-        FROM matching_articles ma
+        SELECT DISTINCT ON (ca.cluster_id)
+            ca.cluster_id,
+            ca.title AS representative_title,
+            ca.source_name AS representative_source,
+            ca.published_at AS representative_published_at
+        FROM cluster_articles ca
         ORDER BY
-            ma.cluster_id,
-            ma.published_at DESC
+            ca.cluster_id,
+            ca.published_at DESC,
+            ca.id DESC
     ),
     cluster_headlines AS (
         SELECT
-            ma.cluster_id,
+            ca.cluster_id,
             JSONB_AGG(
                 JSONB_BUILD_OBJECT(
-                    'article_id', ma.id,
-                    'title', ma.title,
-                    'source', ma.source_name,
-                    'published_at', ma.published_at,
-                    'sentiment_label', ma.sentiment_label,
+                    'article_id', ca.id,
+                    'title', ca.title,
+                    'source', ca.source_name,
+                    'published_at', ca.published_at,
+                    'sentiment_label', ca.sentiment_label,
                     'sentiment_score',
-                        ROUND(ma.sentiment_score::numeric, 3)
+                        ROUND(ca.sentiment_score::numeric, 3)
                 )
                 ORDER BY
-                    ma.similarity_score DESC NULLS LAST,
-                    ma.published_at DESC
+                    ca.similarity_score DESC NULLS LAST,
+                    ca.published_at DESC
             ) AS headlines
-        FROM matching_articles ma
-        GROUP BY ma.cluster_id
+        FROM cluster_articles ca
+        GROUP BY ca.cluster_id
     )
     SELECT
         cs.cluster_id,
@@ -230,7 +244,7 @@ WHAT_DRIVING_QUERY = text(
             NULLIF(BTRIM(ac.short_label), ''),
             ra.representative_title
         ) AS driver_label,
-        cs.matching_article_count AS article_count,
+        cs.article_count,
         cs.source_count,
         ROUND(
             cs.avg_sentiment_score::numeric,
@@ -251,7 +265,10 @@ WHAT_DRIVING_QUERY = text(
         ra.representative_title,
         ra.representative_source,
         ra.representative_published_at,
-        COALESCE(ch.headlines, '[]'::jsonb) AS headlines
+        COALESCE(
+            ch.headlines,
+            '[]'::jsonb
+        ) AS headlines
     FROM cluster_stats cs
     JOIN article_clusters ac
         ON ac.id = cs.cluster_id
@@ -260,7 +277,7 @@ WHAT_DRIVING_QUERY = text(
     JOIN cluster_headlines ch
         ON ch.cluster_id = cs.cluster_id
     ORDER BY
-        cs.matching_article_count DESC,
+        cs.article_count DESC,
         cs.source_count DESC,
         cs.last_seen_at DESC
     LIMIT :limit;
