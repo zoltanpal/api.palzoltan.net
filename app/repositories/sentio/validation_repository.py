@@ -1,6 +1,8 @@
+from collections.abc import Mapping
 from functools import lru_cache
+from typing import Any
 
-from requests import session
+from sqlalchemy.sql.elements import TextClause
 
 from palzlib_db.db_client import DBClient
 
@@ -17,7 +19,6 @@ from app.repositories.sentio.validation_sql.entity_validation import (
     ENTITY_QUEUE_AND_COVERAGE_SQL,
     ENTITY_VALIDATION_SQL,
     INCOMPLETE_ENTITY_ARTICLES_SQL,
-    RECENT_ENTITY_TYPE_DISTRIBUTION_SQL,
 )
 from app.repositories.sentio.validation_sql.health_check import (
     CURRENT_PIPELINE_QUEUE_SQL,
@@ -31,11 +32,45 @@ from app.repositories.sentio.validation_sql.ingestion_cleanup_validation import 
 )
 from app.repositories.sentio.validation_sql.sentiment_validation import (
     INCOMPLETE_SENTIMENT_ARTICLES_SQL,
-    RECENT_RESULT_DISTRIBUTION_SQL,
     SENTIMENT_VALIDATION_SQL,
     STATISTICS_LAST_24_HOURS_SQL,
 )
 from config import pow_live_db_config
+
+
+SYSTEM_HEALTH_QUERIES = {
+    "current_pipeline_queue": CURRENT_PIPELINE_QUEUE_SQL,
+    "ingestion_activity": INGESTION_VOLUME_AND_SOURCE_STATUS_SQL,
+    "system_validation": HEALTH_CHECK_SQL,
+    "ingestion_cleanup_validation": INGESTION_CLEANUP_VALIDATION_SQL,
+    "articles_past_retention_grace": ARTICLES_PAST_RETENTION_GRACE_SQL,
+    "source_status_metadata": UNHEALTHY_ACTIVE_SOURCES_SQL,
+}
+
+SENTIMENT_QUERIES = {
+    "last_24_hours": STATISTICS_LAST_24_HOURS_SQL,
+    "validation": SENTIMENT_VALIDATION_SQL,
+    "incomplete_articles": INCOMPLETE_SENTIMENT_ARTICLES_SQL,
+}
+
+ENTITY_QUERIES = {
+    "queue_and_coverage": ENTITY_QUEUE_AND_COVERAGE_SQL,
+    "validation": ENTITY_VALIDATION_SQL,
+    "incomplete_articles": INCOMPLETE_ENTITY_ARTICLES_SQL,
+}
+
+CLUSTERING_QUERIES = {
+    "queue_and_coverage": CLUSTERING_QUEUE_AND_COVERAGE_SQL,
+    "activity": CLUSTER_ACTIVITY_SQL,
+    "validation": CLUSTERING_INTEGRITY_SQL,
+    "unmarked_articles": UNMARKED_CLUSTERED_ARTICLES_SQL,
+    "unlabeled_multi_article_clusters": UNLABELED_MULTI_ARTICLE_CLUSTERS_SQL,
+    "article_count_mismatches": CLUSTER_ARTICLE_COUNT_MISMATCHES_SQL,
+    "recent_multi_article_clusters": RECENT_MULTI_ARTICLE_CLUSTERS_SQL,
+}
+
+
+QueryResults = dict[str, list[dict[str, Any]]]
 
 
 class ValidationRepository:
@@ -43,71 +78,27 @@ class ValidationRepository:
     def __init__(self, db_client: DBClient):
         self._db_client = db_client
 
-
-    def _fetch_validation_results(self, queries: dict[str, str]):
-        with self._db_client.get_db_session() as session:
+    def _fetch_query_results(self, queries: Mapping[str, TextClause]) -> QueryResults:
+        with self._db_client.get_db_session() as db_session:
             return {
-                name: [dict(row) for row in session.execute(query).mappings().all()]
+                name: [
+                    dict(row)
+                    for row in db_session.execute(query).mappings().all()
+                ]
                 for name, query in queries.items()
             }
 
+    def get_system_health_data(self) -> QueryResults:
+        return self._fetch_query_results(SYSTEM_HEALTH_QUERIES)
 
+    def get_sentiment_data(self) -> QueryResults:
+        return self._fetch_query_results(SENTIMENT_QUERIES)
 
-    def global_health_check(self) -> dict:
-        queries = {
-            "health_check": HEALTH_CHECK_SQL,
-            "current_pipeline_queue": CURRENT_PIPELINE_QUEUE_SQL,
-        }
+    def get_entity_data(self) -> QueryResults:
+        return self._fetch_query_results(ENTITY_QUERIES)
 
-        return self._fetch_validation_results(queries=queries)
-
-
-    def sentiment_validation_check(self) -> dict:
-        queries = {
-            "sentiment_validation": SENTIMENT_VALIDATION_SQL,
-            "statistics_last_24_hours": STATISTICS_LAST_24_HOURS_SQL,
-            # "recent_sentiment_distribution": RECENT_RESULT_DISTRIBUTION_SQL,
-            "incomplete_sentiment_articles": INCOMPLETE_SENTIMENT_ARTICLES_SQL,
-        }
-
-        return self._fetch_validation_results(queries=queries)
-
-
-    def entity_validation_check(self) -> dict:
-        queries = {
-            "entity_validation": ENTITY_VALIDATION_SQL,
-            "entity_queue_and_coverage": ENTITY_QUEUE_AND_COVERAGE_SQL,
-            # "recent_entity_type_distribution": RECENT_ENTITY_TYPE_DISTRIBUTION_SQL,
-            "incomplete_entity_articles": INCOMPLETE_ENTITY_ARTICLES_SQL,
-        }
-
-        return self._fetch_validation_results(queries=queries)
-    
-
-    def clustering_validation_check(self) -> dict:
-        queries = {
-            "clustering_queue_and_coverage": CLUSTERING_QUEUE_AND_COVERAGE_SQL,
-            "cluster_activity": CLUSTER_ACTIVITY_SQL,
-            "clustering_integrity": CLUSTERING_INTEGRITY_SQL,
-            "unmarked_clustered_articles": UNMARKED_CLUSTERED_ARTICLES_SQL,
-            "unlabeled_multi_article_clusters": UNLABELED_MULTI_ARTICLE_CLUSTERS_SQL,
-            "cluster_article_count_mismatches": CLUSTER_ARTICLE_COUNT_MISMATCHES_SQL,
-            "recent_multi_article_clusters": RECENT_MULTI_ARTICLE_CLUSTERS_SQL,
-        }
-
-        return self._fetch_validation_results(queries=queries)
-    
-
-    def ingestion_cleanup_validation_check(self) -> dict:
-        queries = {
-            "ingestion_cleanup_validation": INGESTION_CLEANUP_VALIDATION_SQL,
-            "ingestion_volume_and_source_status": INGESTION_VOLUME_AND_SOURCE_STATUS_SQL,
-            "unhealthy_active_sources": UNHEALTHY_ACTIVE_SOURCES_SQL,
-            "articles_past_retention_grace": ARTICLES_PAST_RETENTION_GRACE_SQL,
-        }
-
-        return self._fetch_validation_results(queries=queries)
-        
+    def get_clustering_data(self) -> QueryResults:
+        return self._fetch_query_results(CLUSTERING_QUERIES)
 
 
 @lru_cache

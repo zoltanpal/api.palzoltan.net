@@ -70,35 +70,20 @@ def dashboard(
 
 
 @router.get("/health", status_code=HTTPStatus.OK)
-def health(
-    service: ValidationService = Depends(get_validation_service),
-):
-    return service.global_health_check()
+def system_health(service: ValidationService = Depends(get_validation_service)):
+    return service.system_health()
 
 
-@router.get("/health/sentiment", status_code=HTTPStatus.OK)
-def sentiment_validation_check(
-    service: ValidationService = Depends(get_validation_service),
-):
-    return service.sentiment_validation_check()
+@router.get("/health/sentiment",status_code=HTTPStatus.OK)
+def sentiment_health(service: ValidationService = Depends(get_validation_service)):
+    return service.sentiment()
 
 
-@router.get("/health/entity", status_code=HTTPStatus.OK)
-def entity_validation_check(
-    service: ValidationService = Depends(get_validation_service),
-):
-    return service.entity_validation_check()
+@router.get("/health/entity",status_code=HTTPStatus.OK)
+def entity_health(service: ValidationService = Depends(get_validation_service)):
+    return service.entity()
 
 
-@router.get("/health/clustering", status_code=HTTPStatus.OK)
-def clustering_validation_check(
-    service: ValidationService = Depends(get_validation_service),
-):
-    return service.clustering_validation_check()
-
-
-@router.get("/health/ingestion-cleanup", status_code=HTTPStatus.OK)
-def ingestion_cleanup_validation_check(
-    service: ValidationService = Depends(get_validation_service),
-):
-    return service.ingestion_cleanup_validation_check()
+@router.get("/health/clustering",status_code=HTTPStatus.OK)
+def clustering_health(service: ValidationService = Depends(get_validation_service)):
+    return service.clustering()
