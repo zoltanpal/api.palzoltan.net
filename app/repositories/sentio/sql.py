@@ -297,7 +297,7 @@ TOP_ENTITIES_QUERY = text(
         a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
         AND a.entity_analyzed_at IS NOT NULL
         AND a.clustered_at IS NOT NULL
-        AND e.entity_type NOT IN (SELECT UNNEST(:excluded_entity_types))
+        AND e.entity_type NOT IN ('location')
     GROUP BY
         e.id,
         e.entity_text,
