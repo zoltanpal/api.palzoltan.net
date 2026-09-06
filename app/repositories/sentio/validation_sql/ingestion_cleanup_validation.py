@@ -211,7 +211,6 @@ SELECT
     s.id AS source_id,
     s.name,
     s.poll_interval_minutes,
-    s.last_fetched_at,
     s.last_success_at,
     s.last_error_at,
     s.last_error_message
