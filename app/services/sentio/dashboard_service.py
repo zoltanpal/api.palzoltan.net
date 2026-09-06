@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, List
 
 from app.models.sentio import (
     AggregatedResponse,
@@ -14,6 +14,7 @@ from app.models.sentio import (
     SummaryLabel,
     SummaryResponse,
 )
+from app.models.sentio.dashboard import TopEntityResponse
 from app.repositories.sentio.repository import SentioRepository
 
 logger = logging.getLogger(__name__)
@@ -210,3 +211,17 @@ class SentioDashboardService:
         except Exception:
             logger.exception("Sentio AI summary failed")
             return None
+
+
+    def get_top_entities(
+            self, 
+            time_window: int, 
+            max_top_entities: int = MAX_TOP_ENTITIES,
+            excluded_entity_types: List[str] = ["location"]
+        ) -> List[TopEntityResponse]:
+
+        return self._repository.fetch_top_entities_dashboard_data(
+            window_hours=normalize_window(time_window),
+            max_top_entities=max_top_entities,
+            excluded_entity_types=excluded_entity_types
+        )

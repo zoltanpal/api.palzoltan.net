@@ -1,6 +1,8 @@
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends
+from app.models.sentio.dashboard import TopEntityResponse
+from fastapi import APIRouter, Query, Depends
+from typing import List
 
 from app.models.sentio import (
     DashboardResponse,
@@ -67,6 +69,20 @@ def dashboard(
         prompt=payload.prompt,
         use_ai=payload.use_ai,
     )
+
+@router.get("/top_entities", status_code=HTTPStatus.OK)
+def top_entities(
+    service: SentioDashboardService = Depends(get_dashboard_service),
+    time_window: int = 24,
+    max_top_entities: int = 5,
+    excluded_entity_types: List[str] = Query(default=["location"], 
+                                             description="Comma-separated list of entity types to exclude"),
+) -> List[TopEntityResponse]:
+
+    return service.get_top_entities(
+        time_window=time_window, 
+        max_top_entities=max_top_entities,
+        excluded_entity_types=excluded_entity_types)
 
 
 @router.get("/health", status_code=HTTPStatus.OK)

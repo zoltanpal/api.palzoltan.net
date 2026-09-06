@@ -102,6 +102,21 @@ class SentioRepository:
             rows = session.execute(DETAILED_SOURCES_QUERY).mappings().all()
         return [DetailedSourceResponse(**dict(row)) for row in rows]
 
+
+    def fetch_top_entities_dashboard_data(
+        self, window_hours: int, max_top_entities: int, excluded_entity_types: list[str]
+    ) -> list[TopEntityResponse]:
+        with self._db_client.get_db_session() as session:
+            rows = session.execute(
+                TOP_ENTITIES_QUERY,
+                { 
+                    "window_hours": window_hours, 
+                    "excluded_entity_types": excluded_entity_types,
+                    "limit": max_top_entities
+                },
+            ).mappings().all()
+        return self._top_entity_models(rows)
+
     @staticmethod
     def _headline_models(rows: list[Mapping[str, Any]]) -> list[HeadlineResponse]:
         return [HeadlineResponse(**dict(row)) for row in rows]
