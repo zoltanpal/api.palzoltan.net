@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
 from app.models.sentio.dashboard import TopEntityResponse
-from build.lib.app.utils.auth.bearer_token import BearerAuth
+from app.utils.auth.bearer_token import BearerAuth
 from fastapi import APIRouter, Query, Depends
 from typing import List
 
