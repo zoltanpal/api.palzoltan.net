@@ -117,6 +117,11 @@ class SentioRepository:
             ).mappings().all()
         return self._top_entity_models(rows)
 
+    def fetch_what_driving_prev(
+        self, *, query: str, cluster_ids: list[int], window_hours: int, limit: int
+    ):
+        pass
+
     @staticmethod
     def _headline_models(rows: list[Mapping[str, Any]]) -> list[HeadlineResponse]:
         return [HeadlineResponse(**dict(row)) for row in rows]

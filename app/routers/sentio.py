@@ -1,6 +1,7 @@
 from http import HTTPStatus
 
 from app.models.sentio.dashboard import TopEntityResponse
+from build.lib.app.utils.auth.bearer_token import BearerAuth
 from fastapi import APIRouter, Query, Depends
 from typing import List
 
@@ -21,7 +22,11 @@ from app.services.sentio.dashboard_service import SentioDashboardService
 from app.services.sentio.prompt_parser import parse_user_query_with_ai
 from app.services.sentio.validation_service import ValidationService
 
-router = APIRouter(prefix="/sentio", tags=["sentio"])
+router = APIRouter(
+    prefix="/sentio", 
+    tags=["sentio"],
+    dependencies=[Depends(BearerAuth())],
+)
 
 
 def get_dashboard_service(

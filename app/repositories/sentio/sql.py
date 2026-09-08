@@ -150,12 +150,8 @@ WHAT_DRIVING_QUERY = text(
         JOIN article_cluster_members acm
             ON acm.article_id = a.id
         WHERE
-            a.search_vector @@ plainto_tsquery(
-                'english',
-                :query
-            )
-            AND a.published_at >= NOW()
-                - (:window_hours * INTERVAL '1 hour')
+            a.search_vector @@ plainto_tsquery('english', :query)
+            AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
             AND a.sentiment_analyzed_at IS NOT NULL
             AND a.entity_analyzed_at IS NOT NULL
     ),
@@ -171,17 +167,12 @@ WHAT_DRIVING_QUERY = text(
             acm.cluster_id,
             acm.similarity_score
         FROM candidate_cluster_ids cci
-        JOIN article_cluster_members acm
-            ON acm.cluster_id = cci.cluster_id
-        JOIN articles a
-            ON a.id = acm.article_id
-        JOIN article_sentiments ars
-            ON ars.article_id = a.id
-        JOIN sources s
-            ON s.id = a.source_id
+        JOIN article_cluster_members acm ON acm.cluster_id = cci.cluster_id
+        JOIN articles a ON a.id = acm.article_id
+        JOIN article_sentiments ars ON ars.article_id = a.id
+        JOIN sources s ON s.id = a.source_id
         WHERE
-            a.published_at >= NOW()
-                - (:window_hours * INTERVAL '1 hour')
+            a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
             AND a.sentiment_analyzed_at IS NOT NULL
             AND a.entity_analyzed_at IS NOT NULL
     ),
@@ -306,5 +297,24 @@ TOP_ENTITIES_QUERY = text(
         article_count DESC,
         e.entity_text ASC
     LIMIT :limit;
+    """
+)
+
+
+PREVIOUS_DRIVERS_QUERY = text(
+    """
+    SELECT
+        acm.cluster_id,
+        COUNT(DISTINCT a.id) AS previous_article_count,
+        COUNT(DISTINCT a.source_id) AS previous_source_count
+    FROM article_cluster_members acm
+    JOIN articles a
+        ON a.id = acm.article_id
+    WHERE
+        acm.cluster_id = ANY(:current_driver_ids)
+        AND a.published_at >= :previous_from
+        AND a.published_at < :previous_to
+        AND a.search_vector @@ websearch_to_tsquery('english', :query)
+    GROUP BY acm.cluster_id;
     """
 )
