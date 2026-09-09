@@ -285,7 +285,8 @@ TOP_ENTITIES_QUERY = text(
     JOIN articles a ON a.id = ae.article_id
     JOIN entities e ON e.id = ae.entity_id
     WHERE
-        a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
+        lower(e.entity_text) <> ALL(CAST(:stop_words AS text[])) 
+        AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
         AND a.entity_analyzed_at IS NOT NULL
         AND a.clustered_at IS NOT NULL
         AND e.entity_type NOT IN ('location')

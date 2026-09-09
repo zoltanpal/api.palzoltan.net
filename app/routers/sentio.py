@@ -5,6 +5,7 @@ from app.utils.auth.bearer_token import BearerAuth
 from fastapi import APIRouter, Query, Depends
 from typing import List
 
+
 from app.models.sentio import (
     DashboardResponse,
     DetailedSourceResponse,
@@ -83,6 +84,8 @@ def top_entities(
     excluded_entity_types: List[str] = Query(default=["location"], 
                                              description="Comma-separated list of entity types to exclude"),
 ) -> List[TopEntityResponse]:
+
+    
 
     return service.get_top_entities(
         time_window=time_window, 

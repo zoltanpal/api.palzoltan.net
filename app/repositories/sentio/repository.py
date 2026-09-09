@@ -104,7 +104,8 @@ class SentioRepository:
 
 
     def fetch_top_entities_dashboard_data(
-        self, window_hours: int, max_top_entities: int, excluded_entity_types: list[str]
+        self, window_hours: int, max_top_entities: int, 
+        excluded_entity_types: list[str], stop_words: list[str]
     ) -> list[TopEntityResponse]:
         with self._db_client.get_db_session() as session:
             rows = session.execute(
@@ -112,7 +113,8 @@ class SentioRepository:
                 { 
                     "window_hours": window_hours, 
                     "excluded_entity_types": excluded_entity_types,
-                    "limit": max_top_entities
+                    "limit": max_top_entities,
+                    "stop_words": stop_words
                 },
             ).mappings().all()
         return self._top_entity_models(rows)
