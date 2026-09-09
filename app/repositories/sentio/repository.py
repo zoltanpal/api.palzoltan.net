@@ -67,7 +67,7 @@ class SentioRepository:
             )
             top_entities = self._top_entity_models(
                 session.execute(
-                    TOP_ENTITIES_QUERY, {**params, "limit": entity_limit}
+                    TOP_ENTITIES_QUERY, {**params, "limit": entity_limit, "stop_words": []}
                 ).mappings().all()
             )
             scores = self._score_models(
