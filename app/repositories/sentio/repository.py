@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Mapping
+from nltk.corpus import stopwords
 
 from palzlib_db.db_client import DBClient
 
@@ -23,6 +24,11 @@ from app.repositories.sentio.sql import (
 )
 from config import pow_live_db_config
 
+stop_words = list(stopwords.words('english'))
+stop_words.extend([
+    "$100"
+])
+        
 
 @dataclass(frozen=True)
 class DashboardData:
@@ -67,7 +73,7 @@ class SentioRepository:
             )
             top_entities = self._top_entity_models(
                 session.execute(
-                    TOP_ENTITIES_QUERY, {**params, "limit": entity_limit, "stop_words": []}
+                    TOP_ENTITIES_QUERY, {**params, "limit": entity_limit, "stop_words": stop_words}
                 ).mappings().all()
             )
             scores = self._score_models(
@@ -105,8 +111,9 @@ class SentioRepository:
 
     def fetch_top_entities_dashboard_data(
         self, window_hours: int, max_top_entities: int, 
-        excluded_entity_types: list[str], stop_words: list[str]
+        excluded_entity_types: list[str]
     ) -> list[TopEntityResponse]:
+
         with self._db_client.get_db_session() as session:
             rows = session.execute(
                 TOP_ENTITIES_QUERY,

@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable, Mapping
 from typing import Any, List
-from nltk.corpus import stopwords
+
 
 from app.models.sentio import (
     AggregatedResponse,
@@ -222,14 +222,8 @@ class SentioDashboardService:
             excluded_entity_types: List[str] = ["location"]
         ) -> List[TopEntityResponse]:
 
-        stop_words = list(stopwords.words('english'))
-        stop_words.extend([
-            "$100"
-        ])
-
         return self._repository.fetch_top_entities_dashboard_data(
             window_hours=normalize_window(time_window),
             max_top_entities=max_top_entities,
-            excluded_entity_types=excluded_entity_types,
-            stop_words=stop_words
+            excluded_entity_types=excluded_entity_types
         )

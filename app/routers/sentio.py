@@ -85,8 +85,6 @@ def top_entities(
                                              description="Comma-separated list of entity types to exclude"),
 ) -> List[TopEntityResponse]:
 
-    
-
     return service.get_top_entities(
         time_window=time_window, 
         max_top_entities=max_top_entities,
