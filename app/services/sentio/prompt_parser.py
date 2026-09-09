@@ -1,0 +1,56 @@
+import json
+import logging
+import re
+from typing import Any
+
+from app.models.sentio import Intent, ParsedQuery
+from app.services.sentio.ai_prompts import build_extractor_prompt
+from app.services.sentio.dashboard_service import DEFAULT_WINDOW_HOURS, normalize_window
+from config import OPENAI_API_KEY
+
+logger = logging.getLogger(__name__)
+
+def parse_llm_json(text: str) -> dict[str, Any]:
+    """Extract a JSON object from raw or fenced LLM output."""
+    if not text:
+        raise ValueError("LLM returned empty response")
+
+    raw_text = text.strip()
+    fenced_match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", raw_text, re.DOTALL)
+
+    if fenced_match:
+        raw_text = fenced_match.group(1).strip()
+
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON returned by LLM: {exc}") from exc
+
+
+def parse_user_query_with_ai(user_input: str) -> ParsedQuery:
+    """ Uses an AI assistant to parse the user's natural language query into a structured format."""
+    if not OPENAI_API_KEY:
+        return ParsedQuery(query=None, window_hours=DEFAULT_WINDOW_HOURS, intent=Intent.UNKNOWN)
+
+    from app.services.ai_assistant import OpenAIAssistant
+
+    try:
+        response_text = OpenAIAssistant(api_key=OPENAI_API_KEY).send_message(
+            build_extractor_prompt(user_input)
+        )
+        parsed = ParsedQuery(**parse_llm_json(response_text)) if response_text else ParsedQuery()
+    except Exception:
+        logger.exception("Sentio query parsing failed")
+        return ParsedQuery(query=None, window_hours=DEFAULT_WINDOW_HOURS, intent=Intent.UNKNOWN)
+
+    normalized_window = normalize_window(parsed.window_hours)
+
+    if not parsed.query:
+        return ParsedQuery(
+            query=None,
+            window_hours=normalized_window,
+            intent=Intent.UNKNOWN,
+        )
+
+    parsed.window_hours = normalized_window
+    return parsed

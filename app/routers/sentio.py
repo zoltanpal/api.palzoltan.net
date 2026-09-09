@@ -1,0 +1,111 @@
+from http import HTTPStatus
+
+from app.models.sentio.dashboard import TopEntityResponse
+from app.utils.auth.bearer_token import BearerAuth
+from fastapi import APIRouter, Query, Depends
+from typing import List
+
+
+from app.models.sentio import (
+    DashboardResponse,
+    DetailedSourceResponse,
+    PromptRequest,
+    PromptResponse,
+    QueryPromptRequest,
+)
+from app.repositories.sentio.repository import SentioRepository, get_sentio_repository
+from app.repositories.sentio.validation_repository import (
+    ValidationRepository,
+    get_validation_repository,
+)
+from app.services.sentio.ai_summarizer import summarize_what_happend_with_ai
+from app.services.sentio.dashboard_service import SentioDashboardService
+from app.services.sentio.prompt_parser import parse_user_query_with_ai
+from app.services.sentio.validation_service import ValidationService
+
+router = APIRouter(
+    prefix="/sentio", 
+    tags=["sentio"],
+    dependencies=[Depends(BearerAuth())],
+)
+
+
+def get_dashboard_service(
+    repository: SentioRepository = Depends(get_sentio_repository),
+) -> SentioDashboardService:
+    return SentioDashboardService(repository, summary_provider=summarize_what_happend_with_ai)
+
+
+def get_validation_service(
+    repository: ValidationRepository = Depends(get_validation_repository),
+) -> ValidationService:
+    return ValidationService(repository=repository)
+
+
+@router.get(
+    "/detailed_sources",
+    response_model=list[DetailedSourceResponse],
+    status_code=HTTPStatus.OK,
+)
+def detailed_sources_list(
+    repository: SentioRepository = Depends(get_sentio_repository),
+) -> list[DetailedSourceResponse]:
+    return repository.fetch_detailed_sources()
+
+
+@router.post("/parse_prompt", response_model=PromptResponse, status_code=HTTPStatus.OK)
+def parse_prompt(payload: PromptRequest) -> PromptResponse:
+    parsed = parse_user_query_with_ai(payload.prompt)
+    return PromptResponse(
+        prompt=payload.prompt,
+        query=parsed.query or "",
+        window_hours=parsed.window_hours,
+        intent=parsed.intent,
+    )
+
+
+@router.post("/dashboard", response_model=DashboardResponse, status_code=HTTPStatus.OK)
+def dashboard(
+    payload: QueryPromptRequest,
+    service: SentioDashboardService = Depends(get_dashboard_service),
+) -> DashboardResponse:
+    return service.build_dashboard(
+        query=payload.query,
+        window_hours=payload.window_hours,
+        prompt=payload.prompt,
+        use_ai=payload.use_ai,
+    )
+
+@router.get("/top_entities", status_code=HTTPStatus.OK)
+def top_entities(
+    service: SentioDashboardService = Depends(get_dashboard_service),
+    time_window: int = 24,
+    max_top_entities: int = 5,
+    excluded_entity_types: List[str] = Query(default=["location"], 
+                                             description="Comma-separated list of entity types to exclude"),
+) -> List[TopEntityResponse]:
+
+    return service.get_top_entities(
+        time_window=time_window, 
+        max_top_entities=max_top_entities,
+        excluded_entity_types=excluded_entity_types)
+
+
+@router.get("/health", status_code=HTTPStatus.OK)
+def system_health(service: ValidationService = Depends(get_validation_service)):
+    return service.system_health()
+
+
+@router.get("/health/sentiment",status_code=HTTPStatus.OK)
+def sentiment_health(service: ValidationService = Depends(get_validation_service)):
+    return service.sentiment()
+
+
+@router.get("/health/entity",status_code=HTTPStatus.OK)
+def entity_health(service: ValidationService = Depends(get_validation_service)):
+    return service.entity()
+
+
+@router.get("/health/clustering",status_code=HTTPStatus.OK)
+def clustering_health(service: ValidationService = Depends(get_validation_service)):
+    return service.clustering()

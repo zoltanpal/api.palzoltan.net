@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Select environment to deploy'
+        description: "Select environment to deploy"
         required: true
-        default: 'dev'
+        default: "dev"
         type: choice
         options:
           - dev
@@ -14,86 +14,79 @@ on:
 
 jobs:
   deploy:
+    name: Deploy (${{ github.event.inputs.environment }}) API
     runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: ${{ github.event.inputs.environment }}
+      BRANCH_NAME: ${{ github.ref_name }}
+      SERVER_DEPLOYMENT_PATH: ${{ secrets.SERVER_DEPLOYMENT_PATH }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          clean: true
 
-      - name: Deploy to the Server
-        uses: appleboy/ssh-action@v1.1.0
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+          SERVER_DEPLOYMENT_PATH: ${{ env.SERVER_DEPLOYMENT_PATH }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: ENVIRONMENT,BRANCH_NAME,SERVER_DEPLOYMENT_PATH
           script: |
-            ENV=${{ github.event.inputs.environment }}
+            set -Eeuo pipefail
 
-            # navigate to the work directory
-            if [ "$ENV" == "prod" ]; then
-              echo "Deploying to production..."
-              WORK_DIR=${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
-              cd ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
-              git config --global --add safe.directory ${{ secrets.PROD_SERVER_DEPLOYMENT_PATH }}
+            BASE_DIR="${SERVER_DEPLOYMENT_PATH%/}"
+            WORK_DIR="$BASE_DIR/$ENVIRONMENT"
+
+            echo "Environment: $ENVIRONMENT"
+            echo "Branch: $BRANCH_NAME"
+            echo "Base dir: $BASE_DIR"
+            echo "Work dir: $WORK_DIR"
+
+            cd "$WORK_DIR"
+
+            export PYENV_ROOT="$HOME/.pyenv"
+            export PATH="$PYENV_ROOT/bin:$PATH"
+
+            if command -v pyenv >/dev/null 2>&1; then
+              eval "$(pyenv init -)"
             else
-              echo "Deploying to development..."
-              WORK_DIR=${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
-              cd ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
-              git config --global --add safe.directory ${{ secrets.DEV_SERVER_DEPLOYMENT_PATH }}
+              echo "pyenv not found in PATH"
+              exit 1
             fi
 
-            # Clone repo if missing
-            if [ ! -d ".git" ]; then
-              git clone https://github.com/zoltanpal/api.palzoltan.net.git .
-              git checkout ${{ github.ref_name }}
+            echo "pyenv version: $(pyenv version)"
+            echo "python version: $(python --version)"
+
+            echo "Fetching latest code..."
+            git fetch --prune origin
+
+            echo "Checking out branch..."
+            git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
+
+            echo "Resetting working tree..."
+            git reset --hard "origin/$BRANCH_NAME"
+
+            echo "Cleaning untracked files..."
+            git clean -fd -e .env -e .venv
+
+            if [ ! -d ".venv" ]; then
+              echo "Creating virtual environment..."
+              python -m venv .venv
             fi
 
-            # Fetch latest changes
-            git fetch origin
+            echo "Activating virtual environment..."
+            source .venv/bin/activate
 
-            # Hard reset to match the latest remote state
-            git reset --hard origin/${{ github.ref_name }}
-            git clean -fd  # Remove untracked files
+            echo "Restarting service..."
+            # sudo systemctl restart "$SERVICE_NAME"
+            # sudo systemctl restart "devapi.palzoltan.net.service"
 
-            git checkout ${{ github.ref_name }}
-
-            # Set up Python & Poetry
-            export POETRY_HOME=$HOME/.poetry
-            export PATH="$POETRY_HOME/bin:$HOME/.local/bin:$PATH"
-
-            # Install Poetry if not available
-            if ! command -v poetry &> /dev/null; then
-              curl -sSL https://install.python-poetry.org | python3 -
-              export PATH="$HOME/.local/bin:$PATH"
-            fi
-
-            # Ensure Poetry uses in-project virtual environments
-            poetry config virtualenvs.in-project true
-
-            # Clear Poetry cache (optional but useful if hashes mismatch)
-            poetry cache clear pypi --all
-
-            # Remove old lock file and regenerate
-            rm -f poetry.lock
-            poetry lock
-
-            # Install dependencies (including the project itself)
-            poetry install
-
-            # Download the language models
-            bash download_language_models.sh $WORK_DIR
-
-            if [ "$ENV" == "prod" ]; then
-              echo "Starting the production API service ..."
-              sudo systemctl restart api.palzoltan.net.service
-              sudo systemctl status api.palzoltan.net.service
-            else
-              echo "Starting the development API service ..."
-              sudo systemctl restart devapi.palzoltan.net.service
-              sudo systemctl status devapi.palzoltan.net.service
-            fi
+            echo "Deployment finished successfully."
