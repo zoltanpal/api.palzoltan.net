@@ -8,7 +8,7 @@ import config
 from app.utils.auth.bearer_token import BearerAuth
 
 router = APIRouter(
-    prefix="/earthquakes",
+    prefix="/portfolio/earthquakes",
     tags=["earthquakes"],
     dependencies=[Depends(BearerAuth())],
 )

@@ -14,7 +14,7 @@ from app.utils.auth.bearer_token import BearerAuth
 
 
 router = APIRouter(
-    prefix="/movie_connections",
+    prefix="/portfolio/movie_connections",
     tags=["movie_connections"],
     dependencies=[Depends(BearerAuth())],
 )

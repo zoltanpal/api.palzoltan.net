@@ -53,7 +53,7 @@ def get_models() -> TimeTravellersModels:
 
 
 router = APIRouter(
-    prefix="/time_travellers",
+    prefix="/portfolio/time_travellers",
     tags=["time_travellers"],
     dependencies=[Depends(BearerAuth())],
 )
