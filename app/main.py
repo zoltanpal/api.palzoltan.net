@@ -11,7 +11,10 @@ from app.utils.middlewares.request_context_middleware import RequestContextMiddl
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
-    app = FastAPI(title="api-palzoltan-net", version="0.1.0")
+    app = FastAPI(
+        title="api-palzoltan-net",
+        version="2.0.1"
+    )
 
     app.add_middleware(QueryStringFlatteningMiddleware)
     app.add_middleware(RequestContextMiddleware)
