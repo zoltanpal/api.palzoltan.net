@@ -60,6 +60,7 @@ def parse_prompt(payload: PromptRequest) -> PromptResponse:
         prompt=payload.prompt,
         query=parsed.query or "",
         window_hours=parsed.window_hours,
+        window_parsed=parsed.window_parsed,
         intent=parsed.intent,
     )
 
