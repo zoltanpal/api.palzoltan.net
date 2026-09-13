@@ -5,6 +5,7 @@ from typing import Any
 
 from app.models.sentio import Intent, ParsedQuery
 from app.services.sentio.ai_prompts import build_extractor_prompt
+from app.services.ai_assistant import OpenAIAssistant
 from app.services.sentio.dashboard_service import DEFAULT_WINDOW_HOURS, normalize_window
 from config import OPENAI_API_KEY
 
@@ -32,8 +33,6 @@ def parse_user_query_with_ai(user_input: str) -> ParsedQuery:
     if not OPENAI_API_KEY:
         return ParsedQuery(query=None, window_hours=DEFAULT_WINDOW_HOURS, intent=Intent.UNKNOWN)
 
-    from app.services.ai_assistant import OpenAIAssistant
-
     try:
         response_text = OpenAIAssistant(api_key=OPENAI_API_KEY).send_message(
             build_extractor_prompt(user_input)
@@ -49,6 +48,7 @@ def parse_user_query_with_ai(user_input: str) -> ParsedQuery:
         return ParsedQuery(
             query=None,
             window_hours=normalized_window,
+            window_parsed=parsed.window_parsed,
             intent=Intent.UNKNOWN,
         )
 

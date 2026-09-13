@@ -37,12 +37,14 @@ Time rules:
 - "past week" -> 72
 - "last 2 days" -> 48
 - "last 3 days" -> 72
-- If there is no time specified, default to 6
+- If there is no time specified, default to 24 and window_parsed=False. If there is then True.
+
 
 Return valid JSON only in this exact format:
 {{
   "query": "string or null",
-  "window_hours": 6,
+  "window_hours": 24,
+  "window_parsed": "True | False"
   "intent": "summary | reason | trend | comparison | unknown"
 }}
 

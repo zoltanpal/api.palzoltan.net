@@ -5,7 +5,8 @@ from app.models.sentio.enums import Intent
 
 class ParsedQuery(BaseModel):
     query: str | None = None
-    window_hours: int = Field(6, ge=1, le=168)
+    window_hours: int = Field(24, ge=6, le=168)
+    window_parsed: bool = Field(False)
     intent: Intent = Intent.UNKNOWN
 
 
@@ -13,6 +14,7 @@ class PromptResponse(BaseModel):
     prompt: str
     query: str
     window_hours: int
+    window_parsed: bool
     intent: Intent = Intent.UNKNOWN
 
 
