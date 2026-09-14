@@ -312,10 +312,10 @@ PREVIOUS_DRIVERS_QUERY = text(
     JOIN articles a
         ON a.id = acm.article_id
     WHERE
-        acm.cluster_id = ANY(:current_driver_ids)
+        acm.cluster_id = ANY(CAST(:current_driver_ids AS BIGINT[]))
         AND a.published_at >= :previous_from
         AND a.published_at < :previous_to
         AND a.search_vector @@ websearch_to_tsquery('english', :query)
-    GROUP BY acm.cluster_id;
+    GROUP BY acm.cluster_id
     """
 )

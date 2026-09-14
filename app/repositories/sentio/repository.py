@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Mapping
 from nltk.corpus import stopwords
+from datetime import datetime, timedelta
 
 from palzlib_db.db_client import DBClient
 
@@ -21,6 +22,7 @@ from app.repositories.sentio.sql import (
     SENTIMENT_SCORES_PER_HOUR_QUERY,
     TOP_ENTITIES_QUERY,
     WHAT_DRIVING_QUERY,
+    PREVIOUS_DRIVERS_QUERY,
 )
 from config import pow_live_db_config
 
@@ -57,20 +59,35 @@ class SentioRepository:
         params = {"query": query, "window_hours": window_hours}
         with self._db_client.get_db_session() as session:
             aggregated = dict(session.execute(AGGREGATED_QUERY, params).mappings().one())
+
+            # All the headlines
             headlines = self._headline_models(
                 session.execute(
                     HEADLINES_QUERY, {**params, "limit": headline_limit}
                 ).mappings().all()
             )
+
+            # Changes
             change_rows = [
                 dict(row)
                 for row in session.execute(SENTIMENT_CHANGE_QUERY, params).mappings().all()
             ]
-            what_driving = self._what_driving_models(
-                session.execute(
-                    WHAT_DRIVING_QUERY, {**params, "limit": driver_limit}
-                ).mappings().all()
+
+            # Collect What's driving data
+            what_driving_rows = session.execute(
+                WHAT_DRIVING_QUERY, {**params, "limit": driver_limit}
+            ).mappings().all()
+
+            cluster_ids = [row["cluster_id"] for row in what_driving_rows]
+
+            what_driving_prev = self.fetch_what_driving_prev(
+                query=query,
+                cluster_ids=cluster_ids,
+                window_hours=window_hours,
             )
+            what_driving = self.what_driving_models(what_driving_rows, what_driving_prev)
+
+            # Fetch top entities of the time period
             top_entities = self._top_entity_models(
                 session.execute(
                     TOP_ENTITIES_QUERY, {**params, "limit": entity_limit, "stop_words": stop_words}
@@ -127,21 +144,46 @@ class SentioRepository:
         return self._top_entity_models(rows)
 
     def fetch_what_driving_prev(
-        self, *, query: str, cluster_ids: list[int], window_hours: int, limit: int
-    ):
-        pass
+        self, *, query: str, cluster_ids: list[int], window_hours: int
+    ) -> dict:
+        if not cluster_ids:
+            return {}
+
+        with self._db_client.get_db_session() as session:
+            current_from = datetime.now() - timedelta(hours=window_hours)
+
+            previous_to = current_from
+            previous_from = current_from - timedelta(hours=window_hours)
+
+            rows = session.execute(
+                PREVIOUS_DRIVERS_QUERY, {
+                    "current_driver_ids": cluster_ids,
+                    "previous_from": previous_from,
+                    "previous_to": previous_to,
+                    "query": query
+                }
+            ).mappings().all()
+
+        if rows:
+            return {row["cluster_id"]: dict(row) for row in rows}
+
+        return {}
 
     @staticmethod
     def _headline_models(rows: list[Mapping[str, Any]]) -> list[HeadlineResponse]:
         return [HeadlineResponse(**dict(row)) for row in rows]
 
-    @staticmethod
-    def _what_driving_models(rows: list[Mapping[str, Any]]) -> WhatDrivingResponse | None:
+
+    # @staticmethod
+    def what_driving_models(
+        self,
+        rows: list[Mapping[str, Any]],
+        previous: dict[int, Mapping[str, Any]],
+    ) -> WhatDrivingResponse | None:
         if not rows:
             return None
 
         first_row = rows[0]
-
         main_reason = (
             first_row.get("driver_label")
             or first_row.get("representative_title")
@@ -150,15 +192,26 @@ class SentioRepository:
         drivers = []
         for row in rows:
             driver_data = dict(row)
-            driver_data.pop("driver_label", "")
-            drivers.append(
-                DriverResponse(**driver_data)
-            )
+            driver_data.pop("driver_label", None)
+
+            prev = previous.get(row["cluster_id"], {})
+
+            driver_data["comparison"] = {
+                "status": self._calculate_driver_status(
+                    current_article_count=driver_data["article_count"],
+                    previous_article_count=prev.get("previous_article_count", 0),
+                ),
+                "previous_article_count": prev.get("previous_article_count", 0),
+                "previous_source_count": prev.get("previous_source_count", 0),
+            }
+
+            drivers.append(DriverResponse(**driver_data))
 
         return WhatDrivingResponse(
             main_reason=main_reason,
             drivers=drivers,
         )
+
 
     @staticmethod
     def _top_entity_models(rows: list[Mapping[str, Any]]) -> list[TopEntityResponse]:
@@ -167,6 +220,24 @@ class SentioRepository:
     @staticmethod
     def _score_models(rows: list[Mapping[str, Any]]) -> list[SentimentScoresPerHourResponse]:
         return [SentimentScoresPerHourResponse(**dict(row)) for row in rows]
+
+    @staticmethod
+    def _calculate_driver_status(current_article_count: int, previous_article_count: int) -> str | None:
+        if (
+            previous_article_count == 0
+            and current_article_count >= 2
+        ):
+            return "new"
+
+        # Require both a relative and absolute increase.
+        if (
+            previous_article_count > 0
+            and current_article_count >= previous_article_count + 2
+            and current_article_count >= previous_article_count * 1.5
+        ):
+            return "gaining"
+
+        return None
 
 
 @lru_cache
