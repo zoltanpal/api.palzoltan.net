@@ -237,7 +237,7 @@ class SentioRepository:
         ):
             return "gaining"
 
-        return None
+        return ""
 
 
 @lru_cache
