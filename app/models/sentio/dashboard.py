@@ -53,10 +53,16 @@ class DriverHeadlineResponse(BaseModel):
     sentiment_label: SentimentLabel
     sentiment_score: float | None = None
 
+class DriverComparison(BaseModel):
+    status: str
+    previous_article_count: int
+    previous_source_count: int
 
 class DriverResponse(BaseModel):
+    cluster_id: int
     article_count: int
     source_count: int
+    comparison: DriverComparison
     avg_sentiment_score: float
     positive_count: int
     neutral_count: int
