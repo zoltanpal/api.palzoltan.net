@@ -45,10 +45,17 @@ jobs:
             BASE_DIR="${SERVER_DEPLOYMENT_PATH%/}"
             WORK_DIR="$BASE_DIR/$ENVIRONMENT"
 
+            if [[ "$ENVIRONMENT" == "dev" ]]; then
+              SERVICE_NAME="devapi.palzoltan.net.service"
+            else
+              SERVICE_NAME="api.palzoltan.net.service"
+            fi
+
             echo "Environment: $ENVIRONMENT"
             echo "Branch: $BRANCH_NAME"
             echo "Base dir: $BASE_DIR"
             echo "Work dir: $WORK_DIR"
+            echo "Service name: $SERVICE_NAME"
 
             cd "$WORK_DIR"
 
@@ -86,7 +93,7 @@ jobs:
             source .venv/bin/activate
 
             echo "Restarting service..."
-            # sudo systemctl restart "$SERVICE_NAME"
+            sudo systemctl restart "$SERVICE_NAME"
             # sudo systemctl restart "devapi.palzoltan.net.service"
 
             echo "Deployment finished successfully."
