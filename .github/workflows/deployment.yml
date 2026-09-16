@@ -93,7 +93,6 @@ jobs:
             source .venv/bin/activate
 
             echo "Restarting service..."
-            sudo systemctl restart "$SERVICE_NAME"
-            # sudo systemctl restart "devapi.palzoltan.net.service"
+            sudo /usr/bin/systemctl restart "$SERVICE_NAME"
 
             echo "Deployment finished successfully."
