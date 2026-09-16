@@ -94,5 +94,7 @@ jobs:
 
             echo "Restarting service..."
             sudo /usr/bin/systemctl restart "$SERVICE_NAME"
+            sleep 5
+            sudo /usr/bin/systemctl status "$SERVICE_NAME"
 
             echo "Deployment finished successfully."
