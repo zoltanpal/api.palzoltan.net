@@ -35,8 +35,10 @@ Time rules:
 - "this week" -> 72
 - "last week" -> 72
 - "past week" -> 72
+- "nowadays" -> 72
 - "last 2 days" -> 48
 - "last 3 days" -> 72
+- If there is time expression but no rules, you should figure out. 
 - If there is no time specified, default to 24 and window_parsed=False. If there is then True.
 
 
