@@ -319,3 +319,79 @@ PREVIOUS_DRIVERS_QUERY = text(
     GROUP BY acm.cluster_id
     """
 )
+
+CREATE_USER = text(
+    """
+    INSERT INTO public.users (
+        firebase_uid,
+        email,
+        nickname
+    )
+    VALUES (
+        :firebase_uid,
+        :email,
+        :nickname
+    )
+    ON CONFLICT (firebase_uid)
+    DO UPDATE SET
+        email = EXCLUDED.email,
+        updated_at = now()
+    RETURNING id, firebase_uid, email, nickname, created_at, updated_at;
+    """
+)
+
+GET_DB_USER = text(
+    """
+    SELECT * FROM users WHERE firebase_uid=:firebase_uid;
+    """
+)
+
+GET_ENTITY = text(
+    """
+    SELECT * FROM entities WHERE id=:entity_id;
+    """
+)
+
+
+CREATE_USER_WATCHLIST = text(
+    """
+    INSERT INTO public.user_watchlist (user_id, entity_id)
+    VALUES (:user_id, :entity_id)
+    ON CONFLICT (user_id, entity_id) DO NOTHING
+    RETURNING entity_id;
+    """
+)
+
+DELETE_USER_WATCHLIST = text(
+    """
+    DELETE FROM public.user_watchlist
+    WHERE user_id = :user_id
+      AND entity_id = :entity_id
+    RETURNING entity_id;
+    """
+)
+
+USER_WATCHLISTS = text(
+    """
+    SELECT e.id as entity_id, 
+        e.entity_text as entity_name, 
+        e.normalized_text as entity_label,
+        e.entity_type,
+        uw.created_at as entity_added
+    FROM public.user_watchlist AS uw
+    JOIN public.entities AS e ON e.id = uw.entity_id
+    WHERE uw.user_id = :user_id
+    ORDER BY e.entity_text, e.id;
+    """
+)
+
+
+SEARCH_ENTITY_BY_NAME = text(
+    """
+    SELECT id, entity_text, entity_type
+    FROM public.entities
+    WHERE normalized_text LIKE :prefix
+    ORDER BY normalized_text, id
+    LIMIT :limit;
+    """
+)

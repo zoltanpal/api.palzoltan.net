@@ -24,7 +24,7 @@ from app.repositories.sentio.sql import (
     WHAT_DRIVING_QUERY,
     PREVIOUS_DRIVERS_QUERY,
 )
-from config import pow_live_db_config
+from config import sentio_db_config
 
 stop_words = list(stopwords.words('english'))
 stop_words.extend([
@@ -242,4 +242,4 @@ class SentioRepository:
 
 @lru_cache
 def get_sentio_repository() -> SentioRepository:
-    return SentioRepository(DBClient(db_config=pow_live_db_config))
+    return SentioRepository(DBClient(db_config=sentio_db_config))

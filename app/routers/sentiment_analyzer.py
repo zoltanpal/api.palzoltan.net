@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from starlette.responses import JSONResponse
 
-from config import pow_db_config, pow_live_db_config, OPENAI_API_KEY
+from config import pow_db_config, sentio_db_config, OPENAI_API_KEY
 from app.services.ai_assistant import OpenAIAssistant
 from palzlib_db.db_client import DBClient
 from palzlib_db.db_mapper import DBMapper
@@ -38,7 +38,7 @@ ai_assistant = OpenAIAssistant(api_key=OPENAI_API_KEY)
 db_client = DBClient(db_config=pow_db_config)
 db_mapping = DBMapper(db_client=db_client)
 
-live_db_client = DBClient(db_config=pow_live_db_config)
+live_db_client = DBClient(db_config=sentio_db_config)
 live_db_mapping = DBMapper(db_client=live_db_client)
 
 JOB_RESULTS: Dict[str, Dict[str, Any]] = {}

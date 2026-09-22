@@ -19,6 +19,7 @@ dependencies = [
   "feedparser>=6.0.12",
   "httpx>=0.28.1",
   "openai>=2.29.0",
+  "firebase-admin>=7.6.0",
 ]
 
 [dependency-groups]
@@ -30,11 +31,11 @@ dev = [
 ]
 
 [tool.uv.sources]
-palzlib-db = { path = "/opt/libs/palzlib_db/dist/palzlib_db-0.1.2-py3-none-any.whl" }
-sentiment-analyzer = { path = "/opt/libs/sentiment_analyzer/dist/sentiment_analyzer-1.1.5-py3-none-any.whl" }
+# palzlib-db = { path = "/opt/libs/palzlib_db/dist/palzlib_db-0.1.2-py3-none-any.whl" }
+# sentiment-analyzer = { path = "/opt/libs/sentiment_analyzer/dist/sentiment_analyzer-1.1.5-py3-none-any.whl" }
 
-# palzlib-db = { path = "../libs/palzlib_db/dist/palzlib_db-0.1.2-py3-none-any.whl" }
-# sentiment-analyzer = { path = "../libs/sentiment_analyzer/dist/sentiment_analyzer-1.1.5-py3-none-any.whl" }
+palzlib-db = { path = "../libs/palzlib_db/dist/palzlib_db-0.1.2-py3-none-any.whl" }
+sentiment-analyzer = { path = "../libs/sentiment_analyzer/dist/sentiment_analyzer-1.1.5-py3-none-any.whl" }
 
 [tool.ruff]
 line-length = 100
