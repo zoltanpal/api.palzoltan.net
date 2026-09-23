@@ -92,6 +92,8 @@ jobs:
             echo "Activating virtual environment..."
             source .venv/bin/activate
 
+            sudo uv sync
+
             echo "Restarting service..."
             sudo /usr/bin/systemctl restart "$SERVICE_NAME"
             sleep 10
