@@ -93,7 +93,7 @@ jobs:
             fi
 
             echo "Syncing Python dependencies..."
-            uv sync --locked --no-dev --python "$(pyenv which python)"
+            uv sync
 
 
             # if [ ! -d ".venv" ]; then
