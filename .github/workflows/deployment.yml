@@ -84,15 +84,25 @@ jobs:
             echo "Cleaning untracked files..."
             git clean -fd -e .env -e .venv
 
-            if [ ! -d ".venv" ]; then
-              echo "Creating virtual environment..."
-              python -m venv .venv
+            # Make uv available when installed for the SSH user.
+            export PATH="$HOME/.local/bin:$PATH"
+
+            if ! command -v uv >/dev/null 2>&1; then
+              echo "uv is not installed or not available in PATH for $(whoami)"
+              exit 1
             fi
 
-            echo "Activating virtual environment..."
-            source .venv/bin/activate
+            echo "Syncing Python dependencies..."
+            uv sync --locked --no-dev --python "$(pyenv which python)"
 
-            sudo uv sync
+
+            # if [ ! -d ".venv" ]; then
+            #   echo "Creating virtual environment..."
+            #   python -m venv .venv
+            # fi
+
+            # echo "Activating virtual environment..."
+            # source .venv/bin/activate
 
             echo "Restarting service..."
             sudo /usr/bin/systemctl restart "$SERVICE_NAME"
