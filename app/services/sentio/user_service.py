@@ -27,7 +27,6 @@ class UserService:
             return result
 
 
-
     def create_user_watchlist(
         self,
         user_obj: dict[str, Any],

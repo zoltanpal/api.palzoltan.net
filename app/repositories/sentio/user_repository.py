@@ -44,7 +44,6 @@ class UserRepository:
                 "limit": limit
             }).mappings().all()
 
-
             return rows
 
 
