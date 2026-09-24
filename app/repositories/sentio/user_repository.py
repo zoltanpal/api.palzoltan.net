@@ -37,15 +37,19 @@ class UserRepository:
 
             return dict(row) if row is not None else None
 
-    def search_entity(self, query: str, limit: str = 10):
+    def search_entity(self, query: str, limit: str = 10, prefix: bool = True):
+        query_pattern = f"{query}%"
+
+        if prefix is False:
+            query_pattern = f"{query}"    
+        
         with self._db_client.get_db_session() as session:
             rows = session.execute(SEARCH_ENTITY_BY_NAME, {
-                "prefix": f"{query}%",
+                "query": query_pattern,
                 "limit": limit
             }).mappings().all()
 
             return rows
-
 
 
     def create_user(self, user_obj: dict[str, Any]) -> dict[str, Any]:

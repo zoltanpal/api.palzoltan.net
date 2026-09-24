@@ -390,7 +390,7 @@ SEARCH_ENTITY_BY_NAME = text(
     """
     SELECT id, entity_text, entity_type
     FROM public.entities
-    WHERE normalized_text LIKE :prefix
+    WHERE normalized_text LIKE :query
     ORDER BY normalized_text, id
     LIMIT :limit;
     """

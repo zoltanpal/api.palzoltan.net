@@ -15,8 +15,9 @@ from app.models.sentio import (
     SummaryLabel,
     SummaryResponse,
 )
-from app.models.sentio.dashboard import TopEntityResponse
-from app.repositories.sentio.repository import SentioRepository
+from app.models.sentio.dashboard import TopEntityResponse, Watchlist
+from app.repositories.sentio.dashboard_repository import SentioRepository
+from app.repositories.sentio.user_repository import UserRepository
 
 
 logger = logging.getLogger(__name__)
@@ -152,10 +153,12 @@ class SentioDashboardService:
     def __init__(
         self,
         repository: SentioRepository,
+        user_repository: UserRepository,
         summary_provider: SummaryProvider | None = None,
     ):
         self._repository = repository
         self._summary_provider = summary_provider
+        self._user_repository = user_repository
 
     def build_dashboard(
         self, *, query: str, window_hours: int, use_ai: bool, prompt: str | None = None
@@ -181,10 +184,14 @@ class SentioDashboardService:
             if use_ai
             else None
         )
+
+        watchlist_candidates = self.get_watchlist_candidates(query=query)
+
         return DashboardResponse(
             query=normalized_query,
             window_hours=normalized_window,
             aggregated=build_aggregated_response(data.aggregated),
+            watchlist_candidates=watchlist_candidates,
             headlines=data.headlines,
             change=change,
             what_driving=data.what_driving,
@@ -216,8 +223,8 @@ class SentioDashboardService:
 
 
     def get_top_entities(
-            self, 
-            time_window: int, 
+            self,
+            time_window: int,
             max_top_entities: int = MAX_TOP_ENTITIES,
             excluded_entity_types: List[str] = ["location"]
         ) -> List[TopEntityResponse]:
@@ -227,3 +234,14 @@ class SentioDashboardService:
             max_top_entities=max_top_entities,
             excluded_entity_types=excluded_entity_types
         )
+
+
+    def get_watchlist_candidates(self, query: str) -> list:
+        entities = self._user_repository.search_entity(query=query, prefix=False)
+        return [
+            Watchlist(
+                id=entity.id,
+                name=entity.entity_text,
+                type=entity.entity_type
+            ) for entity in entities
+        ]

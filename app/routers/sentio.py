@@ -18,7 +18,7 @@ from app.models.sentio import (
     PromptResponse,
     QueryPromptRequest,
 )
-from app.repositories.sentio.repository import SentioRepository, get_sentio_repository
+from app.repositories.sentio.dashboard_repository import SentioRepository, get_sentio_repository
 from app.repositories.sentio.validation_repository import (
     ValidationRepository,
     get_validation_repository,
@@ -50,8 +50,11 @@ except ValueError:
 
 firebase_auth = FirebaseAuth()
 
-def get_dashboard_service(repository: SentioRepository = Depends(get_sentio_repository)) -> SentioDashboardService:
-    return SentioDashboardService(repository, summary_provider=summarize_what_happend_with_ai)
+def get_dashboard_service(
+        repository: SentioRepository = Depends(get_sentio_repository),
+        user_repository: UserRepository=Depends(get_user_repository)
+        ) -> SentioDashboardService:
+    return SentioDashboardService(repository, user_repository, summary_provider=summarize_what_happend_with_ai)
 
 
 def get_validation_service(repository: ValidationRepository = Depends(get_validation_repository)) -> ValidationService:
