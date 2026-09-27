@@ -22,8 +22,8 @@ WEBUI_USER = os.getenv("WEBUI_USER", default="").split(":")
 AUTH_TOKEN = os.getenv("AUTH_TOKEN", default="")
 
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY")
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", default="")
+FIREBASE_SA = os.path.join(ROOT_DIR, "firebase", "firebase-service-account.json")
 
 # Database Configuration
 def get_db_config(db_name: str) -> DBConfig:
@@ -40,4 +40,4 @@ def get_db_config(db_name: str) -> DBConfig:
 psql_config = get_db_config(os.getenv("DB_NAME", "postgres"))
 time_travelers_db_config = get_db_config("time_travellers")
 pow_db_config = get_db_config("power_of_words_v2")
-pow_live_db_config = get_db_config("power_of_words_live")
+sentio_db_config = get_db_config("power_of_words_live")

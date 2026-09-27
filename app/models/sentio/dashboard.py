@@ -105,11 +105,16 @@ class TopEntityResponse(BaseModel):
     entity_type: str
     article_count: int
 
+class Watchlist(BaseModel):
+    id: int
+    name: str
+    type: str
 
 class DashboardResponse(BaseModel):
     query: str
     window_hours: int
     ai_summary: str | None = None
+    watchlist_candidates: list[Watchlist] = Field(default_factory=list)
     aggregated: AggregatedResponse
     change: SentimentChangeResponse
     what_driving: WhatDrivingResponse | None

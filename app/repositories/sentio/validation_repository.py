@@ -35,7 +35,7 @@ from app.repositories.sentio.validation_sql.sentiment_validation import (
     SENTIMENT_VALIDATION_SQL,
     STATISTICS_LAST_24_HOURS_SQL,
 )
-from config import pow_live_db_config
+from config import sentio_db_config
 
 
 SYSTEM_HEALTH_QUERIES = {
@@ -103,4 +103,4 @@ class ValidationRepository:
 
 @lru_cache
 def get_validation_repository() -> ValidationRepository:
-    return ValidationRepository(DBClient(db_config=pow_live_db_config))
+    return ValidationRepository(DBClient(db_config=sentio_db_config))
