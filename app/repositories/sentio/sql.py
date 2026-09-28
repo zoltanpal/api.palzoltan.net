@@ -278,8 +278,9 @@ WHAT_DRIVING_QUERY = text(
 TOP_ENTITIES_QUERY = text(
     """
     SELECT
-        e.entity_text,
-        e.entity_type,
+        e.id,
+        e.entity_text as name,
+        e.entity_type as type,
         COUNT(DISTINCT ae.article_id) AS article_count
     FROM article_entities ae
     JOIN articles a ON a.id = ae.article_id

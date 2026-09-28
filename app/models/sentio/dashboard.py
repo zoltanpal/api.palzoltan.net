@@ -101,8 +101,9 @@ class SentimentChangeResponse(BaseModel):
 
 
 class TopEntityResponse(BaseModel):
-    entity_text: str
-    entity_type: str
+    id: int
+    name: str
+    type: str
     article_count: int
 
 class Watchlist(BaseModel):
