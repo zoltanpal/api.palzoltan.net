@@ -3,7 +3,15 @@
 from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, earthquakes, sentio, time_travellers, movie_connections, sentiment_analyzer
+from app.routers import (
+    health, 
+    earthquakes, 
+    sentio, 
+    time_travellers, 
+    movie_connections, 
+    sentiment_analyzer,
+    depth_atlas
+)
 from app.utils.middlewares.query_flattening_middleware import QueryStringFlatteningMiddleware
 from app.utils.middlewares.request_context_middleware import RequestContextMiddleware
 # from app.utils.middlewares.authentication_middleware import AuthenticationMiddleware
@@ -34,5 +42,6 @@ def create_app() -> FastAPI:
     app.include_router(movie_connections.router)
     app.include_router(sentiment_analyzer.router)
     app.include_router(sentio.router)
+    app.include_router(depth_atlas.router)
 
     return app
