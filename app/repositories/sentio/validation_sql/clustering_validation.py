@@ -49,24 +49,27 @@ SELECT
             WHERE ae.article_id = a.id
         )
     ) AS with_embedding,
-    ROUND(
-        100.0 * COUNT(*) FILTER (
-            WHERE a.sentiment_analyzed_at IS NOT NULL
-              AND a.entity_analyzed_at IS NOT NULL
-              AND a.clustered_at IS NOT NULL
-              AND EXISTS (
-                  SELECT 1
-                  FROM article_cluster_members acm
-                  WHERE acm.article_id = a.id
-              )
-        ) / NULLIF(
-            COUNT(*) FILTER (
+    COALESCE(
+        ROUND(
+            100.0 * COUNT(*) FILTER (
                 WHERE a.sentiment_analyzed_at IS NOT NULL
                   AND a.entity_analyzed_at IS NOT NULL
+                  AND a.clustered_at IS NOT NULL
+                  AND EXISTS (
+                      SELECT 1
+                      FROM article_cluster_members acm
+                      WHERE acm.article_id = a.id
+                  )
+            ) / NULLIF(
+                COUNT(*) FILTER (
+                    WHERE a.sentiment_analyzed_at IS NOT NULL
+                      AND a.entity_analyzed_at IS NOT NULL
+                ),
+                0
             ),
-            0
+            2
         ),
-        2
+        0
     ) AS clustered_pct
 FROM articles a
 WHERE a.fetched_at >= NOW() - INTERVAL '24 hours';
