@@ -389,7 +389,9 @@ USER_WATCHLISTS = text(
 
 SEARCH_ENTITY_BY_NAME = text(
     """
-    SELECT id, entity_text, entity_type
+    SELECT id, 
+        entity_text as name, 
+        entity_type as type
     FROM public.entities
     WHERE normalized_text LIKE :query
     ORDER BY normalized_text, id
