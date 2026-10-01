@@ -278,8 +278,9 @@ WHAT_DRIVING_QUERY = text(
 TOP_ENTITIES_QUERY = text(
     """
     SELECT
-        e.entity_text,
-        e.entity_type,
+        e.id,
+        e.entity_text as name,
+        e.entity_type as type,
         COUNT(DISTINCT ae.article_id) AS article_count
     FROM article_entities ae
     JOIN articles a ON a.id = ae.article_id
@@ -388,7 +389,9 @@ USER_WATCHLISTS = text(
 
 SEARCH_ENTITY_BY_NAME = text(
     """
-    SELECT id, entity_text, entity_type
+    SELECT id, 
+        entity_text as name, 
+        entity_type as type
     FROM public.entities
     WHERE normalized_text LIKE :query
     ORDER BY normalized_text, id
