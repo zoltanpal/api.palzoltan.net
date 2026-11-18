@@ -136,7 +136,7 @@ def create_user(
 ):
     return service.create_user(firebase_user)
 
-@router.get("/user/watchlist_overview", status_code=HTTPStatus.OK)
+@router.get("/user/watchlist/overview", status_code=HTTPStatus.OK)
 def user_watchlist_overview(
     window_hours: int = Query(default=24, description="Time window in hours for the overview"),
     service: UserService = Depends(get_user_service),
