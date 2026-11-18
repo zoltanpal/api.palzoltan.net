@@ -7,7 +7,7 @@ from app.repositories.depth_atlas.depth_atlas_repository import DepthAtlasReposi
 
 
 router = APIRouter(
-    prefix="/depth_atlas",
+    prefix="/portfolio/depth_atlas",
     tags=["depth_atlas"],
     dependencies=[Depends(BearerAuth())],
 )
