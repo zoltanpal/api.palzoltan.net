@@ -27,6 +27,13 @@ class UserService:
             return result
 
 
+    def user_watchlist_overview(self, user_obj: dict[str, Any], window_hours: int = 24):
+        user = self._repository.get_db_user(user_obj["uid"])
+        if user is None:
+            raise UserNotFoundError()
+
+        return self._repository.get_user_watchlist_overview(user_id=user["id"], window_hours=window_hours)
+
     def create_user_watchlist(
         self,
         user_obj: dict[str, Any],
