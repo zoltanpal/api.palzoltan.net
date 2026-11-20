@@ -96,6 +96,7 @@ def dashboard(
 ) -> DashboardResponse:
     return service.build_dashboard(
         query=payload.query,
+        entity_id=payload.entity_id,
         window_hours=payload.window_hours,
         prompt=payload.prompt,
         use_ai=payload.use_ai,
@@ -190,7 +191,7 @@ def user_watchlist(service: UserService = Depends(get_user_service), firebase_us
 
 
 
-
+# Health check endpoints
 @router.get("/health", status_code=HTTPStatus.OK, dependencies=[Depends(BearerAuth())])
 def system_health(service: ValidationService = Depends(get_validation_service)):
     return service.system_health()

@@ -27,6 +27,7 @@ class SummaryResponse(BaseModel):
 
 class AggregatedResponse(BaseModel):
     article_count: int
+    source_count: int
     avg_sentiment: AvgSentimentResponse
     distribution: DistributionResponse
     summary: SummaryResponse

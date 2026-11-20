@@ -50,13 +50,14 @@ class SentioRepository:
         self,
         *,
         query: str,
+        entity_id: int | None,
         window_hours: int,
         headline_limit: int,
         entity_limit: int,
         driver_limit: int,
         bucket_interval: str,
     ) -> DashboardData:
-        params = {"query": query, "window_hours": window_hours}
+        params = {"query": query, "window_hours": window_hours, "entity_id": entity_id}
         with self._db_client.get_db_session() as session:
             aggregated = dict(session.execute(AGGREGATED_QUERY, params).mappings().one())
 
@@ -82,6 +83,7 @@ class SentioRepository:
 
             what_driving_prev = self.fetch_what_driving_prev(
                 query=query,
+                entity_id=entity_id,
                 cluster_ids=cluster_ids,
                 window_hours=window_hours,
             )
@@ -144,7 +146,7 @@ class SentioRepository:
         return self._top_entity_models(rows)
 
     def fetch_what_driving_prev(
-        self, *, query: str, cluster_ids: list[int], window_hours: int
+        self, *, query: str, cluster_ids: list[int], window_hours: int, entity_id: int | None
     ) -> dict:
         if not cluster_ids:
             return {}
@@ -160,7 +162,8 @@ class SentioRepository:
                     "current_driver_ids": cluster_ids,
                     "previous_from": previous_from,
                     "previous_to": previous_to,
-                    "query": query
+                    "query": query,
+                    "entity_id": entity_id
                 }
             ).mappings().all()
 

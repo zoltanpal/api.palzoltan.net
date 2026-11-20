@@ -98,6 +98,7 @@ def build_aggregated_response(row: Mapping[str, Any]) -> AggregatedResponse:
     }
     return AggregatedResponse(
         article_count=total,
+        source_count=int(row["source_count"] or 0),
         avg_sentiment=AvgSentimentResponse(score=round(score, 4), label=get_score_label(score)),
         distribution=DistributionResponse(
             positive_count=counts["positive"],
@@ -161,12 +162,18 @@ class SentioDashboardService:
         self._user_repository = user_repository
 
     def build_dashboard(
-        self, *, query: str, window_hours: int, use_ai: bool, prompt: str | None = None
+        self, *, 
+        query: str, 
+        window_hours: int, 
+        use_ai: bool, 
+        prompt: str | None = None,
+        entity_id: int | None = None
     ) -> DashboardResponse:
         normalized_query = query.strip()
         normalized_window = normalize_window(window_hours)
         data = self._repository.fetch_dashboard_data(
             query=normalized_query,
+            entity_id=entity_id,
             window_hours=normalized_window,
             headline_limit=MAX_HEADLINES,
             entity_limit=MAX_TOP_ENTITIES,

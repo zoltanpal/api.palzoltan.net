@@ -32,6 +32,7 @@ class PromptRequest(BaseModel):
 
 class QueryPromptRequest(BaseModel):
     query: str = Field(min_length=1, max_length=200)
+    entity_id: int | None = Field(default=None, gt=0)
     window_hours: int = Field(6, ge=1, le=168)
     prompt: str | None = Field(default=None, max_length=2_000)
     use_ai: bool = True
