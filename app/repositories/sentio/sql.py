@@ -214,22 +214,7 @@ WHAT_DRIVING_QUERY = text(
         JOIN article_cluster_members acm
             ON acm.article_id = a.id
         WHERE
-            (
-                (
-                    CAST(:entity_id AS BIGINT) IS NULL
-                    AND a.search_vector @@ plainto_tsquery('english', :query)
-                )
-                OR
-                (
-                    CAST(:entity_id AS BIGINT) IS NOT NULL
-                    AND EXISTS (
-                        SELECT 1
-                        FROM article_entities ae
-                        WHERE ae.article_id = a.id
-                        AND ae.entity_id = CAST(:entity_id AS BIGINT)
-                    )
-                )
-            )
+            a.search_vector @@ plainto_tsquery('english', :query)
             AND a.published_at >= NOW() - (:window_hours * INTERVAL '1 hour')
             AND a.published_at < NOW()
             AND a.sentiment_analyzed_at IS NOT NULL
@@ -398,22 +383,7 @@ PREVIOUS_DRIVERS_QUERY = text(
         acm.cluster_id = ANY(CAST(:current_driver_ids AS BIGINT[]))
         AND a.published_at >= :previous_from
         AND a.published_at < :previous_to
-        AND (
-            (
-                CAST(:entity_id AS BIGINT) IS NULL
-                AND a.search_vector @@ plainto_tsquery('english', :query)
-            )
-            OR
-            (
-                CAST(:entity_id AS BIGINT) IS NOT NULL
-                AND EXISTS (
-                    SELECT 1
-                    FROM article_entities ae
-                    WHERE ae.article_id = a.id
-                      AND ae.entity_id = CAST(:entity_id AS BIGINT)
-                )
-            )
-        )
+        AND a.search_vector @@ websearch_to_tsquery('english', :query)
     GROUP BY acm.cluster_id
     """
 )
@@ -541,49 +511,34 @@ USER_WATCHLISTS_OVERVIEW = text(
         SELECT
             entity_id,
             COUNT(*) FILTER (
-                WHERE
-                    is_current
+                WHERE is_current
             ) AS article_count,
             COUNT(*) FILTER (
-                WHERE
-                    NOT is_current
+                WHERE NOT is_current
             ) AS previous_article_count,
             COUNT(*) FILTER (
-                WHERE
-                    is_current
-                    AND sentiment_score IS NOT NULL
+                WHERE is_current AND sentiment_score IS NOT NULL
             ) AS analyzed_count,
             AVG(sentiment_score) FILTER (
-                WHERE
-                    is_current
+                WHERE is_current
             ) AS avg_sentiment,
             AVG(sentiment_score) FILTER (
-                WHERE
-                    NOT is_current
+                WHERE NOT is_current
             ) AS previous_avg_sentiment,
             COUNT(*) FILTER (
-                WHERE
-                    is_current
-                    AND sentiment_label = 'positive'
+                WHERE is_current AND sentiment_label = 'positive'
             ) AS positive_count,
             COUNT(*) FILTER (
-                WHERE
-                    is_current
-                    AND sentiment_label = 'neutral'
+                WHERE is_current AND sentiment_label = 'neutral'
             ) AS neutral_count,
             COUNT(*) FILTER (
-                WHERE
-                    is_current
-                    AND sentiment_label = 'negative'
+                WHERE is_current AND sentiment_label = 'negative'
             ) AS negative_count,
             COUNT(DISTINCT source_id) FILTER (
-                WHERE
-                    is_current
+                WHERE is_current
             ) AS source_count
-        FROM
-            activity
-        GROUP BY
-            entity_id
+        FROM activity
+        GROUP BY entity_id
     ),
     latest_articles AS (
         SELECT DISTINCT
@@ -591,10 +546,8 @@ USER_WATCHLISTS_OVERVIEW = text(
             title,
             link,
             published_at
-        FROM
-            activity
-        WHERE
-            is_current
+        FROM activity
+        WHERE is_current
         ORDER BY
             entity_id,
             published_at DESC,
