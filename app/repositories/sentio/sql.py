@@ -278,8 +278,9 @@ WHAT_DRIVING_QUERY = text(
 TOP_ENTITIES_QUERY = text(
     """
     SELECT
-        e.entity_text,
-        e.entity_type,
+        e.id,
+        e.entity_text as name,
+        e.entity_type as type,
         COUNT(DISTINCT ae.article_id) AS article_count
     FROM article_entities ae
     JOIN articles a ON a.id = ae.article_id
@@ -388,10 +389,143 @@ USER_WATCHLISTS = text(
 
 SEARCH_ENTITY_BY_NAME = text(
     """
-    SELECT id, entity_text, entity_type
+    SELECT id, 
+        entity_text as name, 
+        entity_type as type
     FROM public.entities
     WHERE normalized_text LIKE :query
     ORDER BY normalized_text, id
     LIMIT :limit;
+    """
+)
+
+USER_WATCHLISTS_OVERVIEW = text(
+    """
+    WITH params AS (
+        SELECT
+            NOW() AS as_of,
+            CAST (:window_hours AS INTEGER) * INTERVAL '1 hour' AS window_size
+    ),
+    followed_entities AS (
+        SELECT
+            e.id AS entity_id,
+            e.entity_text AS entity_name,
+            e.entity_type AS entity_type,
+            uw.created_at AS followed_at
+        FROM
+            user_watchlist uw
+            JOIN entities e ON e.id = uw.entity_id
+        WHERE
+            uw.user_id = :user_id
+    ),
+    activity AS (
+        SELECT
+            ae.entity_id,
+            a.id AS article_id,
+            a.title,
+            a.link,
+            a.source_id,
+            a.published_at,
+            s.sentiment_score,
+            s.sentiment_label,
+            (a.published_at >= p.as_of - p.window_size) AS is_current
+        FROM
+            followed_entities fe
+            JOIN article_entities ae ON ae.entity_id = fe.entity_id
+            JOIN articles a ON a.id = ae.article_id
+            CROSS JOIN params p
+            LEFT JOIN article_sentiments s ON s.article_id = a.id
+        WHERE
+            a.published_at >= p.as_of - 2 * p.window_size
+            AND a.published_at < p.as_of
+    ),
+    metrics AS (
+        SELECT
+            entity_id,
+            COUNT(*) FILTER (
+                WHERE
+                    is_current
+            ) AS article_count,
+            COUNT(*) FILTER (
+                WHERE
+                    NOT is_current
+            ) AS previous_article_count,
+            COUNT(*) FILTER (
+                WHERE
+                    is_current
+                    AND sentiment_score IS NOT NULL
+            ) AS analyzed_count,
+            AVG(sentiment_score) FILTER (
+                WHERE
+                    is_current
+            ) AS avg_sentiment,
+            AVG(sentiment_score) FILTER (
+                WHERE
+                    NOT is_current
+            ) AS previous_avg_sentiment,
+            COUNT(*) FILTER (
+                WHERE
+                    is_current
+                    AND sentiment_label = 'positive'
+            ) AS positive_count,
+            COUNT(*) FILTER (
+                WHERE
+                    is_current
+                    AND sentiment_label = 'neutral'
+            ) AS neutral_count,
+            COUNT(*) FILTER (
+                WHERE
+                    is_current
+                    AND sentiment_label = 'negative'
+            ) AS negative_count,
+            COUNT(DISTINCT source_id) FILTER (
+                WHERE
+                    is_current
+            ) AS source_count
+        FROM
+            activity
+        GROUP BY
+            entity_id
+    ),
+    latest_articles AS (
+        SELECT DISTINCT
+            ON (entity_id) entity_id,
+            title,
+            link,
+            published_at
+        FROM
+            activity
+        WHERE
+            is_current
+        ORDER BY
+            entity_id,
+            published_at DESC,
+            article_id DESC
+    )
+    SELECT
+        fe.entity_id,
+        fe.entity_name,
+        fe.entity_type,
+        fe.followed_at,
+        COALESCE (m.article_count, 0) AS article_count,
+        COALESCE (m.previous_article_count, 0) AS previous_article_count,
+        COALESCE (m.analyzed_count, 0) AS analyzed_count,
+        ROUND(m.avg_sentiment::NUMERIC, 3) AS avg_sentiment,
+        ROUND(m.previous_avg_sentiment::NUMERIC, 3) AS previous_avg_sentiment,
+        ROUND((m.avg_sentiment - m.previous_avg_sentiment)::NUMERIC, 3) AS sentiment_change,
+        COALESCE (m.positive_count, 0) AS positive_count,
+        COALESCE (m.neutral_count, 0) AS neutral_count,
+        COALESCE (m.negative_count, 0) AS negative_count,
+        COALESCE (m.source_count, 0) AS source_count,
+        la.title AS latest_title,
+        la.link AS latest_link,
+        la.published_at AS latest_published_at
+    FROM
+        followed_entities fe
+        LEFT JOIN metrics m ON m.entity_id = fe.entity_id
+        LEFT JOIN latest_articles la ON la.entity_id = fe.entity_id
+    ORDER BY
+        fe.followed_at DESC,
+        fe.entity_id;
     """
 )

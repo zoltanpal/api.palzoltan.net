@@ -241,7 +241,7 @@ class SentioDashboardService:
         return [
             Watchlist(
                 id=entity.id,
-                name=entity.entity_text,
-                type=entity.entity_type
+                name=entity.name,
+                type=entity.type
             ) for entity in entities
         ]

@@ -11,6 +11,7 @@ from app.repositories.sentio.sql import (
     GET_ENTITY,
     USER_WATCHLISTS,
     SEARCH_ENTITY_BY_NAME,
+    USER_WATCHLISTS_OVERVIEW,
 )
 from config import sentio_db_config
 
@@ -50,6 +51,16 @@ class UserRepository:
             }).mappings().all()
 
             return rows
+
+
+    def get_user_watchlist_overview(self, user_id: int, window_hours: int = 24) -> list[dict[str, Any]]:
+        with self._db_client.get_db_session() as session:
+            rows = session.execute(
+                USER_WATCHLISTS_OVERVIEW,
+                {"user_id": user_id, "window_hours": window_hours},
+            ).mappings().all()
+
+            return [dict(row) for row in rows]
 
 
     def create_user(self, user_obj: dict[str, Any]) -> dict[str, Any]:
