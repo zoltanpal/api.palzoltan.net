@@ -3,12 +3,12 @@ from http import HTTPStatus
 
 from app.utils.auth.bearer_token import BearerAuth
 
-from app.repositories.depth_atlas.depth_atlas_repository import DepthAtlasRepository, get_validation_repository
+from app.repositories.bath_atlas.bath_atlas_repository import DepthAtlasRepository, get_validation_repository
 
 
 router = APIRouter(
-    prefix="/portfolio/depth_atlas",
-    tags=["depth_atlas"],
+    prefix="/portfolio/bath_atlas",
+    tags=["bath_atlas"],
     dependencies=[Depends(BearerAuth())],
 )
 

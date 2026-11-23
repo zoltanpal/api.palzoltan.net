@@ -3,10 +3,10 @@ from functools import lru_cache
 from typing import Any
 from palzlib_db.db_client import DBClient
 from sqlalchemy.sql.elements import TextClause
-from config import depth_atlas_db_config
+from config import bath_atlas_db_config
 
 
-from app.repositories.depth_atlas.sql import (
+from app.repositories.bath_atlas.sql import (
     GET_DATASETS
 )
 
@@ -30,4 +30,4 @@ class DepthAtlasRepository:
 
 @lru_cache
 def get_validation_repository() -> DepthAtlasRepository:
-    return DepthAtlasRepository(DBClient(db_config=depth_atlas_db_config))
+    return DepthAtlasRepository(DBClient(db_config=bath_atlas_db_config))
